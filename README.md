@@ -148,12 +148,12 @@ A diferencia de una base de datos instalada en una computadora local, **Oracle A
 AgroManager_Oracle/
 ├── 📁 Backend/          → Servidor y API
 │   ├── src/
-│   │   ├── routes/      → Endpoints de la API
+│   │   ├── routes/      → Endpoints de la API (incluye dashboard y fertilizantes con stock)
 │   │   ├── controllers/ → Lógica de cada módulo
 │   │   ├── services/    → Reglas de negocio e IA
 │   │   └── config/      → Configuración y conexión Oracle
 │   └── db/
-│       └── schema.sql   → Estructura de la base de datos
+│       └── schema.sql   → DDL completo: tablas, triggers, tipos PL/SQL, vistas y procedimiento
 │
 ├── 📁 Frontend/         → Interfaz de usuario
 │   └── src/
@@ -169,15 +169,16 @@ AgroManager_Oracle/
 
 ## Roadmap
 
-- [x] Panel de control con métricas en tiempo real
+- [x] Panel de control con métricas en tiempo real (Vista `V_DASHBOARD`)
 - [x] Gestión de parcelas, trabajadores y maquinaria
-- [x] Control financiero (ingresos y egresos)
+- [x] Control financiero (ingresos y egresos) con resumen mensual (`V_RESUMEN_FINANCIERO`)
 - [x] Campañas con diario de cosecha y remisiones
 - [x] Exportación de reportes en PDF
 - [x] Asistente AgroBot con IA
 - [x] Autenticación segura con JWT
-- [x] Base de datos en Oracle Cloud
-- [ ] Notificaciones y alertas automáticas
+- [x] Base de datos en Oracle Cloud con PL/SQL (triggers, vistas, colecciones, procedimiento)
+- [x] Control de stock de fertilizantes con descuento automático por trigger
+- [x] Alertas automáticas al detectar plagas de alta severidad
 - [ ] Aplicación móvil nativa
 - [ ] Integración con sensores IoT de campo
 

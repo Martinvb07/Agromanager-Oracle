@@ -46,7 +46,7 @@ Versión de la API de AgroManager migrada a **Oracle Autonomous Database** (Orac
 ```
 Backend/
 ├── db/
-│   └── schema.sql              # DDL Oracle: IDENTITY, VARCHAR2, CLOB, triggers updated_at
+│   └── schema.sql              # DDL Oracle completo: tablas, triggers, tipos, vistas y procedimiento PL/SQL
 │
 └── src/
     ├── app.js                  # Configuración Express (middleware, rutas, error handler)
@@ -64,9 +64,10 @@ Backend/
     │   └── requireOwner.js     # Verifica que `req.user.rol === 'owner'`
     │
     ├── routes/
-    │   ├── index.js            # Agrega todas las rutas bajo /api/v1
+    │   ├── index.js            # Agrega todas las rutas
     │   ├── health.routes.js
     │   ├── auth.routes.js
+    │   ├── dashboard.routes.js # Dashboard: V_DASHBOARD y V_RESUMEN_FINANCIERO
     │   ├── parcelas.routes.js
     │   ├── trabajadores.routes.js
     │   ├── finanzas.routes.js
@@ -76,14 +77,17 @@ Backend/
     │   ├── riego.routes.js
     │   ├── campanas.routes.js  # Incluye /diario y /remisiones anidados
     │   ├── cambios.routes.js
+    │   ├── fertilizantes.routes.js # Incluye stock, usos y aplicación en lote
     │   ├── owner.routes.js
     │   └── ai.routes.js
     │
     ├── controllers/            # Reciben req/res, delegan lógica al servicio
+    │   ├── dashboard.controller.js
     │   └── [un controller por dominio]
     │
     ├── services/               # Lógica de negocio y queries Oracle SQL
     │   ├── ai.service.js       # Motor de IA (heurístico / OpenAI / Anthropic)
+    │   ├── dashboard.service.js # Consulta vistas V_DASHBOARD y V_RESUMEN_FINANCIERO
     │   └── [un service por dominio]
     │
     ├── data/
@@ -189,6 +193,24 @@ Mismo patrón CRUD: `GET /`, `POST /`, `PUT /:id`, `DELETE /:id`
 | GET | `/cambios` | Público | Listar cambios (acepta `?limit=N`) |
 | POST | `/cambios` | Owner | Publicar novedad/mejora/corrección |
 
+### Dashboard (Vistas PL/SQL)
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/dashboard` | Resumen del usuario desde `V_DASHBOARD` (parcelas, trabajadores, finanzas del mes, campañas activas) |
+| GET | `/dashboard/financiero` | Ingresos y egresos agrupados por mes desde `V_RESUMEN_FINANCIERO` |
+
+### Fertilizantes
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/fertilizantes` | Listar fertilizantes |
+| POST | `/fertilizantes` | Registrar fertilizante |
+| GET | `/fertilizantes/stock-bajo` | Fertilizantes bajo mínimo desde `V_STOCK_BAJO` |
+| POST | `/fertilizantes/aplicar-lote` | Aplica lista de fertilizantes vía `sp_aplicar_fertilizantes` (colección PL/SQL) |
+| GET | `/fertilizantes/:id/usos` | Historial de usos de un fertilizante |
+| POST | `/fertilizantes/:id/usar` | Registra uso — dispara `trg_descontar_stock_fertilizante` |
+| PUT | `/fertilizantes/:id` | Actualizar fertilizante |
+| DELETE | `/fertilizantes/:id` | Eliminar fertilizante |
+
 ### IA / AgroBot
 | Método | Ruta | Descripción |
 |--------|------|-------------|
@@ -227,6 +249,19 @@ Mismo patrón CRUD: `GET /`, `POST /`, `PUT /:id`, `DELETE /:id`
 Todas las tablas transaccionales incluyen `usuario_id` para aislamiento multi-tenant.  
 Las tablas `campanas_diario` y `remisiones` usan `ON DELETE CASCADE` sobre `campana_id`.  
 Cada tabla tiene un trigger `BEFORE UPDATE` para actualizar el campo `updated_at`.
+
+### Objetos PL/SQL
+
+| Objeto | Tipo | Descripción |
+|--------|------|-------------|
+| `trg_descontar_stock_fertilizante` | Trigger `BEFORE INSERT` | Descuenta `stock_kg` en `fertilizantes` al registrar un uso. Lanza error si el stock es insuficiente. |
+| `trg_alerta_plaga_alta` | Trigger `AFTER INSERT` | Inserta automáticamente una alerta en `cambios` cuando se detecta una plaga con severidad `Alta`. |
+| `t_uso_fert` | Object Type | Tipo objeto con `fertilizante_id` y `cantidad_kg` para uso en colecciones. |
+| `t_lista_usos` | Nested Table | Colección de `t_uso_fert` usada como parámetro del procedimiento de lote. |
+| `sp_aplicar_fertilizantes` | Procedure | Recibe una colección `t_lista_usos`, itera cada ítem e inserta en `usos_fertilizante` (activando el trigger de stock por cada fila). |
+| `V_DASHBOARD` | View | Resumen por usuario: parcelas activas, trabajadores, ingresos/egresos del mes y campañas activas. |
+| `V_RESUMEN_FINANCIERO` | View | `UNION ALL` de ingresos y egresos agrupados por mes para reportes financieros. |
+| `V_STOCK_BAJO` | View | Fertilizantes cuyo `stock_kg` es menor o igual a `stock_minimo`. |
 
 ---
 
