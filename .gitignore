@@ -1,3 +1,6 @@
+# Claude Code local settings
+.claude/
+
 # Dependencies
 node_modules/
 
@@ -11,8 +14,10 @@ node_modules/
 *.pem
 *.sso
 *.ora
+*.zip
 wallet/
 wallets/
+Wallet_*/
 
 # Build output
 Frontend/dist/
