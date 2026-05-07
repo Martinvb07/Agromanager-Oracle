@@ -4,8 +4,8 @@
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   (import.meta.env.PROD
-    ? 'https://agromanager.pro/api'
-    : 'http://localhost:3001/api/v1');
+    ? '/api'
+    : 'http://localhost:3001/api');
 
 async function request(path, options = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
