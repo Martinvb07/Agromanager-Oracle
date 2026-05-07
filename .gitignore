@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment variables (NEVER commit secrets)
+.env
+.env.local
+.env.production
+
+# Oracle wallet (sensitive credentials - upload manually to VPS)
+*.p12
+*.pem
+*.sso
+*.ora
+wallet/
+wallets/
+
+# Build output
+Frontend/dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db

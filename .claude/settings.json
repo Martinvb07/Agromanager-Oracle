@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"c:/Users/marti/Devps/Proyectos Universitarios/AgroManager_Oracle/\" && ls \"c:/Users/marti/oracle_wallets/\" 2>/dev/null || echo \"wallet dir no existe aun\")",
+      "Read(//c/Users/marti/**)",
+      "Bash(mkdir -p \"/c/Users/marti/oracle_wallets/agromanager\")",
+      "Bash(unzip -o \"c:/Users/marti/Devps/Proyectos Universitarios/AgroManager_Oracle/Wallet_agromanager.zip\" -d \"/c/Users/marti/oracle_wallets/agromanager\")",
+      "Bash(npm install *)",
+      "Bash(node src/scripts/test-db.js)",
+      "Bash(timeout 10 bash -c \"echo >/dev/tcp/adb.sa-bogota-1.oraclecloud.com/1522\")",
+      "Bash(npx kill-port *)",
+      "Bash(taskkill //F //IM node.exe)"
+    ]
+  }
+}

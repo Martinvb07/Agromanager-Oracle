@@ -1,0 +1,272 @@
+/* ─────────────────────────────────────────────
+   TractorLoader – Minimalist B&W tractor + trailer
+   ───────────────────────────────────────────── */
+
+/* ── Overlay ── */
+.tractor-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  overflow: hidden;
+  animation: tractorFadeIn 0.4s ease-out;
+}
+
+.tractor-loader--exit {
+  animation: tractorFadeOut 0.6s ease-in forwards;
+}
+
+@keyframes tractorFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes tractorFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ── Ground line ── */
+.tractor-groundline {
+  position: absolute;
+  bottom: 38%;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* ── Tractor + Trailer rig ── */
+.tractor-rig {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  animation: rigDrive 6s linear infinite;
+  bottom: -8%;
+}
+
+@keyframes rigDrive {
+  0%   { transform: translateX(-120vw); }
+  100% { transform: translateX(120vw); }
+}
+
+/* ── Tractor Body ── */
+.tractor-body {
+  position: relative;
+  width: 110px;
+  height: 80px;
+}
+
+/* Cabin */
+.tractor-cabin {
+  position: absolute;
+  bottom: 28px;
+  left: 5px;
+  width: 48px;
+  height: 48px;
+  background: #fff;
+  border-radius: 4px 8px 0 0;
+}
+
+.tractor-window {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 22px;
+  height: 20px;
+  background: #000;
+  border-radius: 2px 4px 2px 2px;
+}
+
+/* Hood / engine */
+.tractor-hood {
+  position: absolute;
+  bottom: 28px;
+  left: 53px;
+  width: 52px;
+  height: 28px;
+  background: #fff;
+  border-radius: 0 6px 0 0;
+}
+
+/* Exhaust pipe */
+.tractor-exhaust {
+  position: absolute;
+  bottom: 56px;
+  left: 92px;
+  width: 5px;
+  height: 20px;
+  background: #fff;
+  border-radius: 2px 2px 0 0;
+}
+
+/* ── Smoke ── */
+.tractor-smoke {
+  position: absolute;
+  top: -10px;
+  left: 90px;
+  z-index: 2;
+}
+.tractor-smoke span {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  animation: smokeRise 1.8s ease-out infinite;
+}
+.tractor-smoke span:nth-child(1) {
+  width: 10px;
+  height: 10px;
+  left: 0;
+  animation-delay: 0s;
+}
+.tractor-smoke span:nth-child(2) {
+  width: 14px;
+  height: 14px;
+  left: 5px;
+  animation-delay: 0.6s;
+}
+.tractor-smoke span:nth-child(3) {
+  width: 8px;
+  height: 8px;
+  left: -3px;
+  animation-delay: 1.2s;
+}
+
+@keyframes smokeRise {
+  0%   { opacity: 0.5; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-35px) translateX(8px) scale(2.2); }
+}
+
+/* ── Wheels ── */
+.tractor-wheel {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: wheelSpin 0.5s linear infinite;
+}
+
+.tractor-wheel--back {
+  width: 48px;
+  height: 48px;
+  bottom: 4px;
+  left: 6px;
+}
+
+.tractor-wheel--front {
+  width: 32px;
+  height: 32px;
+  bottom: 12px;
+  left: 82px;
+}
+
+.tractor-wheel-hub {
+  width: 40%;
+  height: 40%;
+  border-radius: 50%;
+  background: #000;
+}
+
+@keyframes wheelSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Tread marks */
+.tractor-wheel::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 2px dashed rgba(0, 0, 0, 0.25);
+}
+
+/* ── Hitch bar ── */
+.tractor-hitch {
+  width: 16px;
+  height: 4px;
+  background: #fff;
+  align-self: center;
+  margin-bottom: 24px;
+}
+
+/* ── Trailer ── */
+.tractor-trailer {
+  position: relative;
+  width: 130px;
+  height: 64px;
+  margin-bottom: 0;
+}
+
+.tractor-trailer-bed {
+  position: absolute;
+  bottom: 24px;
+  left: 0;
+  width: 130px;
+  height: 40px;
+  background: #fff;
+  border-radius: 2px;
+}
+
+/* Trailer side wall detail */
+.tractor-trailer-bed::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  border-left: 3px solid rgba(0, 0, 0, 0.15);
+  border-right: 3px solid rgba(0, 0, 0, 0.15);
+  border-top: 3px solid rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+}
+
+.tractor-wheel--trailer {
+  width: 30px;
+  height: 30px;
+  bottom: 9px;
+  left: 10px;
+}
+
+/* ── Message ── */
+.tractor-message {
+  position: absolute;
+  bottom: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  animation: messagePulse 2s ease-in-out infinite;
+}
+
+@keyframes messagePulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .tractor-body {
+    transform: scale(0.75);
+    transform-origin: bottom center;
+  }
+  .tractor-trailer {
+    transform: scale(0.75);
+    transform-origin: bottom left;
+  }
+  .tractor-message {
+    font-size: 14px;
+  }
+}
