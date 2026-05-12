@@ -81,7 +81,8 @@ async function main() {
       ok++;
     } catch (err) {
       // ORA-00955: name already used  |  ORA-02261: constraint exists  |  ORA-01408: index exists
-      if ([955, 2261, 1408, 4080].includes(err.errorNum)) {
+      // ORA-02303: type has dependents (CREATE OR REPLACE TYPE con mismo body = inofensivo)
+      if ([955, 2261, 1408, 4080, 2303].includes(err.errorNum)) {
         console.log(`  SKIP (ya existe)  ${preview}`);
         skipped++;
       } else {
