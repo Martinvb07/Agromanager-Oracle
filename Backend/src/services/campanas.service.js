@@ -1,17 +1,22 @@
 import { query, insertReturningId, toDate } from '../config/db.js';
 
-const CAMPANA_FIELDS = `
-  id                AS "id",
-  nombre            AS "nombre",
-  fecha_inicio      AS "fechaInicio",
-  fecha_fin         AS "fechaFin",
-  hectareas         AS "hectareas",
-  lotes             AS "lotes",
-  inversion_total   AS "inversionTotal",
-  gastos_operativos AS "gastosOperativos",
-  ingreso_total     AS "ingresoTotal",
-  rendimiento_ha    AS "rendimientoHa",
-  produccion_total  AS "produccionTotal"
+// Campos base de la tabla campanas (sin totales derivados).
+const CAMPANA_BASE = `
+  c.id           AS "id",
+  c.nombre       AS "nombre",
+  c.fecha_inicio AS "fechaInicio",
+  c.fecha_fin    AS "fechaFin",
+  c.hectareas    AS "hectareas",
+  c.lotes        AS "lotes"
+`;
+
+// Totales calculados desde V_CAMPANAS_RESUMEN.
+const CAMPANA_TOTALES = `
+  NVL(v.ingreso_total,       0) AS "ingresoTotal",
+  NVL(v.egresos_total,       0) AS "egresosTotal",
+  NVL(v.produccion_total,    0) AS "produccionTotal",
+  NVL(v.hectareas_cosechadas,0) AS "hectareasCosechadas",
+  NVL(v.rendimiento_ha,      0) AS "rendimientoHa"
 `;
 
 const DIARIO_FIELDS = `
@@ -23,34 +28,52 @@ const DIARIO_FIELDS = `
 `;
 
 const REMISION_FIELDS = `
-  id                AS "id",
-  fecha             AS "fecha",
-  nombre_conductor  AS "nombreConductor",
-  cc_conductor      AS "ccConductor",
-  vehiculo_placa    AS "vehiculoPlaca",
-  origen            AS "origen",
-  destino           AS "destino",
-  cantidad          AS "cantidad",
-  variedad          AS "variedad",
-  tel_conductor     AS "telefonoConductor",
-  tel_propietario   AS "telefonoPropietario",
-  enviado_por       AS "enviadoPor",
-  enviado_cc        AS "enviadoCc",
-  valor_flete       AS "valorFlete",
-  firma_conductor   AS "firmaConductor",
-  firma_propietario AS "firmaPropietario",
-  nota              AS "nota"
+  r.id                AS "id",
+  r.fecha             AS "fecha",
+  c.nombre            AS "nombreConductor",
+  c.cc                AS "ccConductor",
+  r.vehiculo_placa    AS "vehiculoPlaca",
+  r.origen            AS "origen",
+  r.destino           AS "destino",
+  r.cantidad          AS "cantidad",
+  r.variedad          AS "variedad",
+  c.tel               AS "telefonoConductor",
+  r.tel_propietario   AS "telefonoPropietario",
+  r.enviado_por       AS "enviadoPor",
+  r.enviado_cc        AS "enviadoCc",
+  r.valor_flete       AS "valorFlete",
+  r.firma_conductor   AS "firmaConductor",
+  r.firma_propietario AS "firmaPropietario",
+  r.nota              AS "nota"
 `;
+
+async function upsertConductor(cc, nombre, tel) {
+  if (!cc) return null;
+  const existing = await query(`SELECT id FROM conductores WHERE cc = :cc`, { cc });
+  if (existing.rows.length > 0) {
+    const id = existing.rows[0].id;
+    await query(
+      `UPDATE conductores SET nombre = :nombre, tel = :tel WHERE id = :id`,
+      { nombre: nombre ?? null, tel: tel ?? null, id }
+    );
+    return id;
+  }
+  return insertReturningId(
+    `INSERT INTO conductores (cc, nombre, tel) VALUES (:cc, :nombre, :tel) RETURNING id INTO :outId`,
+    { cc, nombre: nombre ?? null, tel: tel ?? null }
+  );
+}
 
 export const campanasService = {
   // -------- Campañas --------
 
   async list(userId) {
     const result = await query(
-      `SELECT ${CAMPANA_FIELDS}
-         FROM campanas
-        WHERE usuario_id = :userId
-        ORDER BY fecha_inicio DESC, id DESC`,
+      `SELECT ${CAMPANA_BASE}, ${CAMPANA_TOTALES}
+         FROM campanas c
+         LEFT JOIN V_CAMPANAS_RESUMEN v ON v.campana_id = c.id
+        WHERE c.usuario_id = :userId
+        ORDER BY c.fecha_inicio DESC, c.id DESC`,
       { userId }
     );
     return result.rows;
@@ -63,19 +86,11 @@ export const campanasService = {
       fechaFin = null,
       hectareas = null,
       lotes = null,
-      inversionTotal = 0,
-      gastosOperativos = 0,
-      ingresoTotal = 0,
-      rendimientoHa = null,
-      produccionTotal = null,
     } = payload || {};
 
     const id = await insertReturningId(
-      `INSERT INTO campanas
-         (nombre, fecha_inicio, fecha_fin, hectareas, lotes, inversion_total,
-          gastos_operativos, ingreso_total, rendimiento_ha, produccion_total, usuario_id)
-       VALUES (:nombre, :fechaInicio, :fechaFin, :hectareas, :lotes, :inversionTotal,
-               :gastosOperativos, :ingresoTotal, :rendimientoHa, :produccionTotal, :userId)
+      `INSERT INTO campanas (nombre, fecha_inicio, fecha_fin, hectareas, lotes, usuario_id)
+       VALUES (:nombre, :fechaInicio, :fechaFin, :hectareas, :lotes, :userId)
        RETURNING id INTO :outId`,
       {
         nombre,
@@ -83,11 +98,6 @@ export const campanasService = {
         fechaFin: toDate(fechaFin),
         hectareas,
         lotes,
-        inversionTotal,
-        gastosOperativos,
-        ingresoTotal,
-        rendimientoHa,
-        produccionTotal,
         userId,
       }
     );
@@ -102,11 +112,6 @@ export const campanasService = {
       fechaFin: 'fecha_fin',
       hectareas: 'hectareas',
       lotes: 'lotes',
-      inversionTotal: 'inversion_total',
-      gastosOperativos: 'gastos_operativos',
-      ingresoTotal: 'ingreso_total',
-      rendimientoHa: 'rendimiento_ha',
-      produccionTotal: 'produccion_total',
     };
     const dateKeys = new Set(['fechaInicio', 'fechaFin']);
 
@@ -132,9 +137,10 @@ export const campanasService = {
 
   async getById(userId, id) {
     const result = await query(
-      `SELECT ${CAMPANA_FIELDS}
-         FROM campanas
-        WHERE usuario_id = :userId AND id = :id`,
+      `SELECT ${CAMPANA_BASE}, ${CAMPANA_TOTALES}
+         FROM campanas c
+         LEFT JOIN V_CAMPANAS_RESUMEN v ON v.campana_id = c.id
+        WHERE c.usuario_id = :userId AND c.id = :id`,
       { userId, id }
     );
     return result.rows[0] || null;
@@ -245,9 +251,9 @@ export const campanasService = {
   async listRemisiones(userId, campanaId) {
     const result = await query(
       `SELECT ${REMISION_FIELDS}
-         FROM remisiones
-        WHERE usuario_id = :userId AND campana_id = :campanaId
-        ORDER BY fecha DESC, id DESC`,
+         FROM remisiones r LEFT JOIN conductores c ON c.id = r.conductor_id
+        WHERE r.usuario_id = :userId AND r.campana_id = :campanaId
+        ORDER BY r.fecha DESC, r.id DESC`,
       { userId, campanaId }
     );
     return result.rows;
@@ -273,27 +279,27 @@ export const campanasService = {
       nota = null,
     } = payload || {};
 
+    const conductorId = await upsertConductor(ccConductor, nombreConductor, telefonoConductor);
+
     const id = await insertReturningId(
       `INSERT INTO remisiones (
-         campana_id, fecha, nombre_conductor, cc_conductor, vehiculo_placa,
-         origen, destino, cantidad, variedad, tel_conductor, tel_propietario, valor_flete,
+         campana_id, fecha, conductor_id, vehiculo_placa,
+         origen, destino, cantidad, variedad, tel_propietario, valor_flete,
          enviado_por, enviado_cc, firma_conductor, firma_propietario, nota, usuario_id)
        VALUES (
-         :campanaId, :fecha, :nombreConductor, :ccConductor, :vehiculoPlaca,
-         :origen, :destino, :cantidad, :variedad, :telefonoConductor, :telefonoPropietario, :valorFlete,
+         :campanaId, :fecha, :conductorId, :vehiculoPlaca,
+         :origen, :destino, :cantidad, :variedad, :telefonoPropietario, :valorFlete,
          :enviadoPor, :enviadoCc, :firmaConductor, :firmaPropietario, :nota, :userId)
        RETURNING id INTO :outId`,
       {
         campanaId,
         fecha: toDate(fecha),
-        nombreConductor,
-        ccConductor,
+        conductorId,
         vehiculoPlaca,
         origen,
         destino,
         cantidad,
         variedad,
-        telefonoConductor,
         telefonoPropietario,
         valorFlete,
         enviadoPor,
@@ -309,16 +315,25 @@ export const campanasService = {
   },
 
   async updateRemision(userId, campanaId, remisionId, changes) {
+    const hasConductorChange = ['nombreConductor', 'ccConductor', 'telefonoConductor'].some(k => k in changes);
+    let conductorId;
+
+    if (hasConductorChange) {
+      const current = await this.getRemisionById(userId, campanaId, remisionId);
+      conductorId = await upsertConductor(
+        changes.ccConductor ?? current?.ccConductor,
+        changes.nombreConductor ?? current?.nombreConductor,
+        changes.telefonoConductor ?? current?.telefonoConductor
+      );
+    }
+
     const map = {
       fecha: 'fecha',
-      nombreConductor: 'nombre_conductor',
-      ccConductor: 'cc_conductor',
       vehiculoPlaca: 'vehiculo_placa',
       origen: 'origen',
       destino: 'destino',
       cantidad: 'cantidad',
       variedad: 'variedad',
-      telefonoConductor: 'tel_conductor',
       telefonoPropietario: 'tel_propietario',
       enviadoPor: 'enviado_por',
       enviadoCc: 'enviado_cc',
@@ -331,6 +346,11 @@ export const campanasService = {
 
     const setParts = [];
     const binds = { userId, campanaId, id: remisionId };
+
+    if (conductorId !== undefined) {
+      setParts.push('conductor_id = :conductorId');
+      binds.conductorId = conductorId;
+    }
 
     for (const [key, column] of Object.entries(map)) {
       if (key in changes) {
@@ -353,8 +373,8 @@ export const campanasService = {
   async getRemisionById(userId, campanaId, remisionId) {
     const result = await query(
       `SELECT ${REMISION_FIELDS}
-         FROM remisiones
-        WHERE usuario_id = :userId AND campana_id = :campanaId AND id = :id`,
+         FROM remisiones r LEFT JOIN conductores c ON c.id = r.conductor_id
+        WHERE r.usuario_id = :userId AND r.campana_id = :campanaId AND r.id = :id`,
       { userId, campanaId, id: remisionId }
     );
     return result.rows[0] || null;

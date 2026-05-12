@@ -1,24 +1,21 @@
 import { query, insertReturningId, toDate } from '../config/db.js';
 
 const FIELDS = `
-  id               AS "id",
-  nombre           AS "fertilizante",
-  cantidad         AS "dosis",
-  fecha_aplicacion AS "fecha",
-  estado           AS "estado",
-  parcela_nombre   AS "parcela",
-  costo            AS "costo",
-  stock_kg         AS "stock_kg",
-  stock_minimo     AS "stock_minimo"
+  f.id           AS "id",
+  f.nombre       AS "fertilizante",
+  f.estado       AS "estado",
+  f.costo        AS "costo",
+  f.stock_kg     AS "stock_kg",
+  f.stock_minimo AS "stock_minimo"
 `;
 
 export const fertilizantesService = {
   async list(userId) {
     const result = await query(
       `SELECT ${FIELDS}
-         FROM fertilizantes
-        WHERE usuario_id = :userId
-        ORDER BY fecha_aplicacion DESC NULLS LAST, id DESC`,
+         FROM fertilizantes f
+        WHERE f.usuario_id = :userId
+        ORDER BY f.id DESC`,
       { userId }
     );
     return result.rows;
@@ -27,19 +24,18 @@ export const fertilizantesService = {
   async create(userId, payload) {
     const {
       fertilizante = null,
-      dosis = null,
-      fecha = null,
-      estado = 'Aplicado',
-      parcela = null,
+      estado = 'Disponible',
       costo = 0,
+      stock_kg = 0,
+      stock_minimo = 0,
     } = payload || {};
 
     const id = await insertReturningId(
       `INSERT INTO fertilizantes
-         (nombre, cantidad, fecha_aplicacion, estado, parcela_nombre, costo, usuario_id)
-       VALUES (:fertilizante, :dosis, :fecha, :estado, :parcela, :costo, :userId)
+         (nombre, estado, costo, stock_kg, stock_minimo, usuario_id)
+       VALUES (:fertilizante, :estado, :costo, :stock_kg, :stock_minimo, :userId)
        RETURNING id INTO :outId`,
-      { fertilizante, dosis, fecha: toDate(fecha), estado, parcela, costo, userId }
+      { fertilizante, estado, costo, stock_kg, stock_minimo, userId }
     );
 
     return this.getById(userId, id);
@@ -48,13 +44,11 @@ export const fertilizantesService = {
   async update(userId, id, changes) {
     const map = {
       fertilizante: 'nombre',
-      dosis: 'cantidad',
-      fecha: 'fecha_aplicacion',
       estado: 'estado',
-      parcela: 'parcela_nombre',
       costo: 'costo',
+      stock_kg: 'stock_kg',
+      stock_minimo: 'stock_minimo',
     };
-    const dateKeys = new Set(['fecha']);
 
     const setParts = [];
     const binds = { userId, id };
@@ -62,7 +56,7 @@ export const fertilizantesService = {
     for (const [key, column] of Object.entries(map)) {
       if (key in changes) {
         setParts.push(`${column} = :${key}`);
-        binds[key] = dateKeys.has(key) ? toDate(changes[key]) : changes[key];
+        binds[key] = changes[key];
       }
     }
 
@@ -80,8 +74,8 @@ export const fertilizantesService = {
   async getById(userId, id) {
     const result = await query(
       `SELECT ${FIELDS}
-         FROM fertilizantes
-        WHERE usuario_id = :userId AND id = :id`,
+         FROM fertilizantes f
+        WHERE f.usuario_id = :userId AND f.id = :id`,
       { userId, id }
     );
     return result.rows[0] || null;
@@ -98,7 +92,7 @@ export const fertilizantesService = {
   async stockBajo(userId) {
     const result = await query(
       `SELECT id, nombre, stock_kg AS "stock_kg", stock_minimo AS "stock_minimo",
-              diferencia_kg AS "diferencia_kg", parcela_nombre AS "parcela"
+              diferencia_kg AS "diferencia_kg"
          FROM V_STOCK_BAJO
         WHERE usuario_id = :userId
         ORDER BY diferencia_kg ASC`,

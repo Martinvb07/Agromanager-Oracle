@@ -6,7 +6,8 @@ const ING_FIELDS = `
   monto       AS "monto",
   fecha       AS "fecha",
   tipo        AS "tipo",
-  parcela_id  AS "parcelaId"
+  parcela_id  AS "parcelaId",
+  campana_id  AS "campanaId"
 `;
 
 const EG_FIELDS = `
@@ -15,7 +16,9 @@ const EG_FIELDS = `
   monto      AS "monto",
   fecha      AS "fecha",
   tipo       AS "tipo",
-  categoria  AS "categoria"
+  categoria  AS "categoria",
+  parcela_id AS "parcelaId",
+  campana_id AS "campanaId"
 `;
 
 export const finanzasService = {
@@ -48,13 +51,14 @@ export const finanzasService = {
       fecha = null,
       tipo = null,
       parcelaId = null,
+      campanaId = null,
     } = payload || {};
 
     const id = await insertReturningId(
-      `INSERT INTO ingresos (concepto, monto, fecha, tipo, parcela_id, usuario_id)
-       VALUES (:concepto, :monto, :fecha, :tipo, :parcelaId, :userId)
+      `INSERT INTO ingresos (concepto, monto, fecha, tipo, parcela_id, campana_id, usuario_id)
+       VALUES (:concepto, :monto, :fecha, :tipo, :parcelaId, :campanaId, :userId)
        RETURNING id INTO :outId`,
-      { concepto, monto, fecha: toDate(fecha), tipo, parcelaId, userId }
+      { concepto, monto, fecha: toDate(fecha), tipo, parcelaId, campanaId, userId }
     );
 
     const result = await query(
@@ -71,13 +75,15 @@ export const finanzasService = {
       fecha = null,
       tipo = null,
       categoria = null,
+      parcelaId = null,
+      campanaId = null,
     } = payload || {};
 
     const id = await insertReturningId(
-      `INSERT INTO egresos (concepto, monto, fecha, tipo, categoria, usuario_id)
-       VALUES (:concepto, :monto, :fecha, :tipo, :categoria, :userId)
+      `INSERT INTO egresos (concepto, monto, fecha, tipo, categoria, parcela_id, campana_id, usuario_id)
+       VALUES (:concepto, :monto, :fecha, :tipo, :categoria, :parcelaId, :campanaId, :userId)
        RETURNING id INTO :outId`,
-      { concepto, monto, fecha: toDate(fecha), tipo, categoria, userId }
+      { concepto, monto, fecha: toDate(fecha), tipo, categoria, parcelaId, campanaId, userId }
     );
 
     const result = await query(

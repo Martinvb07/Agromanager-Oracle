@@ -1,21 +1,45 @@
 import { query, insertReturningId, toDate } from '../config/db.js';
 
 const SELECT_FIELDS = `
-  id          AS "id",
-  cultivo     AS "cultivo",
-  tipo        AS "tipo",
-  severidad   AS "severidad",
-  tratamiento AS "tratamiento",
-  fecha_detec AS "fechaDetec"
+  p.id           AS "id",
+  p.cultivo      AS "cultivo",
+  tp.tipo        AS "tipo",
+  p.severidad    AS "severidad",
+  tp.tratamiento AS "tratamiento",
+  p.fecha_detec  AS "fechaDetec"
 `;
+
+const FROM_JOIN = `
+  FROM plagas p
+  LEFT JOIN tipos_plaga tp ON tp.id = p.tipo_id
+`;
+
+async function upsertTipoPlaga(tipo, tratamiento) {
+  if (!tipo) return null;
+  const existing = await query(`SELECT id FROM tipos_plaga WHERE tipo = :tipo`, { tipo });
+  if (existing.rows.length > 0) {
+    const id = existing.rows[0].id;
+    if (tratamiento !== undefined) {
+      await query(
+        `UPDATE tipos_plaga SET tratamiento = :tratamiento WHERE id = :id`,
+        { tratamiento, id }
+      );
+    }
+    return id;
+  }
+  return insertReturningId(
+    `INSERT INTO tipos_plaga (tipo, tratamiento) VALUES (:tipo, :tratamiento) RETURNING id INTO :outId`,
+    { tipo, tratamiento: tratamiento ?? null }
+  );
+}
 
 export const plagasService = {
   async list(userId) {
     const result = await query(
       `SELECT ${SELECT_FIELDS}
-         FROM plagas
-        WHERE usuario_id = :userId
-        ORDER BY fecha_detec DESC, id DESC`,
+       ${FROM_JOIN}
+        WHERE p.usuario_id = :userId
+        ORDER BY p.fecha_detec DESC, p.id DESC`,
       { userId }
     );
     return result.rows;
@@ -30,28 +54,44 @@ export const plagasService = {
       fechaDetec = null,
     } = payload || {};
 
+    const tipoId = await upsertTipoPlaga(tipo, tratamiento);
+
     const id = await insertReturningId(
-      `INSERT INTO plagas (cultivo, tipo, severidad, tratamiento, fecha_detec, usuario_id)
-       VALUES (:cultivo, :tipo, :severidad, :tratamiento, :fechaDetec, :userId)
+      `INSERT INTO plagas (cultivo, tipo_id, severidad, fecha_detec, usuario_id)
+       VALUES (:cultivo, :tipoId, :severidad, :fechaDetec, :userId)
        RETURNING id INTO :outId`,
-      { cultivo, tipo, severidad, tratamiento, fechaDetec: toDate(fechaDetec), userId }
+      { cultivo, tipoId, severidad, fechaDetec: toDate(fechaDetec), userId }
     );
 
     return this.getById(userId, id);
   },
 
   async update(userId, id, changes) {
+    const needsTipoUpdate = 'tipo' in changes || 'tratamiento' in changes;
+    let tipoId;
+
+    if (needsTipoUpdate) {
+      const current = await this.getById(userId, id);
+      tipoId = await upsertTipoPlaga(
+        changes.tipo ?? current?.tipo,
+        changes.tratamiento ?? current?.tratamiento
+      );
+    }
+
     const map = {
       cultivo: 'cultivo',
-      tipo: 'tipo',
       severidad: 'severidad',
-      tratamiento: 'tratamiento',
       fechaDetec: 'fecha_detec',
     };
     const dateKeys = new Set(['fechaDetec']);
 
     const setParts = [];
     const binds = { userId, id };
+
+    if (tipoId !== undefined) {
+      setParts.push('tipo_id = :tipoId');
+      binds.tipoId = tipoId;
+    }
 
     for (const [key, column] of Object.entries(map)) {
       if (key in changes) {
@@ -72,7 +112,9 @@ export const plagasService = {
 
   async getById(userId, id) {
     const result = await query(
-      `SELECT ${SELECT_FIELDS} FROM plagas WHERE usuario_id = :userId AND id = :id`,
+      `SELECT ${SELECT_FIELDS}
+       ${FROM_JOIN}
+        WHERE p.usuario_id = :userId AND p.id = :id`,
       { userId, id }
     );
     return result.rows[0] || null;
