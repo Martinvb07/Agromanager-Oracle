@@ -12,6 +12,7 @@
     "lint": "echo 'add eslint later'",
     "db:test": "node src/scripts/test-db.js",
     "db:schema": "node src/scripts/run-schema.js",
+    "db:migrate": "node src/scripts/run-migration.js",
     "db:seed-owner": "node src/scripts/seed-owner.js"
   },
   "dependencies": {
