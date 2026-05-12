@@ -348,7 +348,7 @@ CREATE INDEX idx_maquinaria_usuario     ON maquinaria(usuario_id);
 CREATE INDEX idx_semillas_usuario       ON semillas(usuario_id);
 CREATE INDEX idx_plagas_usuario         ON plagas(usuario_id, fecha_detec);
 CREATE INDEX idx_riego_usuario          ON riego(usuario_id);
-CREATE INDEX idx_fertilizantes_usuario  ON fertilizantes(usuario_id, fecha_aplicacion);
+CREATE INDEX idx_fertilizantes_usuario  ON fertilizantes(usuario_id);
 CREATE INDEX idx_campanas_usuario       ON campanas(usuario_id, fecha_inicio);
 CREATE INDEX idx_campanas_diario_camp   ON campanas_diario(campana_id, fecha);
 CREATE INDEX idx_remisiones_camp        ON remisiones(campana_id, fecha);
