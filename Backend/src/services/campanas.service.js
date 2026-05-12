@@ -39,8 +39,8 @@ const REMISION_FIELDS = `
   r.variedad          AS "variedad",
   c.tel               AS "telefonoConductor",
   r.tel_propietario   AS "telefonoPropietario",
-  r.enviado_por       AS "enviadoPor",
-  r.enviado_cc        AS "enviadoCc",
+  r.enviado_por_id    AS "enviadoPorId",
+  u.nombre            AS "enviadoPor",
   r.valor_flete       AS "valorFlete",
   r.firma_conductor   AS "firmaConductor",
   r.firma_propietario AS "firmaPropietario",
@@ -251,7 +251,9 @@ export const campanasService = {
   async listRemisiones(userId, campanaId) {
     const result = await query(
       `SELECT ${REMISION_FIELDS}
-         FROM remisiones r LEFT JOIN conductores c ON c.id = r.conductor_id
+         FROM remisiones r
+         LEFT JOIN conductores c ON c.id = r.conductor_id
+         LEFT JOIN usuarios u   ON u.id = r.enviado_por_id
         WHERE r.usuario_id = :userId AND r.campana_id = :campanaId
         ORDER BY r.fecha DESC, r.id DESC`,
       { userId, campanaId }
@@ -271,8 +273,7 @@ export const campanasService = {
       variedad = null,
       telefonoConductor = null,
       telefonoPropietario = null,
-      enviadoPor = null,
-      enviadoCc = null,
+      enviadoPorId = null,
       valorFlete = null,
       firmaConductor = null,
       firmaPropietario = null,
@@ -285,11 +286,11 @@ export const campanasService = {
       `INSERT INTO remisiones (
          campana_id, fecha, conductor_id, vehiculo_placa,
          origen, destino, cantidad, variedad, tel_propietario, valor_flete,
-         enviado_por, enviado_cc, firma_conductor, firma_propietario, nota, usuario_id)
+         enviado_por_id, firma_conductor, firma_propietario, nota, usuario_id)
        VALUES (
          :campanaId, :fecha, :conductorId, :vehiculoPlaca,
          :origen, :destino, :cantidad, :variedad, :telefonoPropietario, :valorFlete,
-         :enviadoPor, :enviadoCc, :firmaConductor, :firmaPropietario, :nota, :userId)
+         :enviadoPorId, :firmaConductor, :firmaPropietario, :nota, :userId)
        RETURNING id INTO :outId`,
       {
         campanaId,
@@ -302,8 +303,7 @@ export const campanasService = {
         variedad,
         telefonoPropietario,
         valorFlete,
-        enviadoPor,
-        enviadoCc,
+        enviadoPorId: enviadoPorId ? Number(enviadoPorId) : null,
         firmaConductor,
         firmaPropietario,
         nota,
@@ -335,8 +335,7 @@ export const campanasService = {
       cantidad: 'cantidad',
       variedad: 'variedad',
       telefonoPropietario: 'tel_propietario',
-      enviadoPor: 'enviado_por',
-      enviadoCc: 'enviado_cc',
+      enviadoPorId: 'enviado_por_id',
       valorFlete: 'valor_flete',
       firmaConductor: 'firma_conductor',
       firmaPropietario: 'firma_propietario',
@@ -373,7 +372,9 @@ export const campanasService = {
   async getRemisionById(userId, campanaId, remisionId) {
     const result = await query(
       `SELECT ${REMISION_FIELDS}
-         FROM remisiones r LEFT JOIN conductores c ON c.id = r.conductor_id
+         FROM remisiones r
+         LEFT JOIN conductores c ON c.id = r.conductor_id
+         LEFT JOIN usuarios u   ON u.id = r.enviado_por_id
         WHERE r.usuario_id = :userId AND r.campana_id = :campanaId AND r.id = :id`,
       { userId, campanaId, id: remisionId }
     );
@@ -385,6 +386,41 @@ export const campanasService = {
       `DELETE FROM remisiones
         WHERE usuario_id = :userId AND campana_id = :campanaId AND id = :id`,
       { userId, campanaId, id: remisionId }
+    );
+    return (result.rowsAffected || 0) > 0;
+  },
+
+  // -------- Parcelas de campaña (N:M) --------
+
+  async listParcelas(userId, campanaId) {
+    const result = await query(
+      `SELECT p.id AS "id", p.nombre AS "nombre", p.hectareas AS "hectareas", p.cultivo AS "cultivo"
+         FROM campanas_parcelas cp
+         JOIN parcelas p  ON p.id  = cp.parcela_id
+         JOIN campanas c  ON c.id  = cp.campana_id
+        WHERE c.usuario_id = :userId AND cp.campana_id = :campanaId
+        ORDER BY p.nombre`,
+      { userId, campanaId }
+    );
+    return result.rows;
+  },
+
+  async addParcela(userId, campanaId, parcelaId) {
+    const campana = await this.getById(userId, campanaId);
+    if (!campana) return false;
+    await query(
+      `INSERT INTO campanas_parcelas (campana_id, parcela_id) VALUES (:campanaId, :parcelaId)`,
+      { campanaId, parcelaId }
+    );
+    return true;
+  },
+
+  async removeParcela(userId, campanaId, parcelaId) {
+    const campana = await this.getById(userId, campanaId);
+    if (!campana) return false;
+    const result = await query(
+      `DELETE FROM campanas_parcelas WHERE campana_id = :campanaId AND parcela_id = :parcelaId`,
+      { campanaId, parcelaId }
     );
     return (result.rowsAffected || 0) > 0;
   },

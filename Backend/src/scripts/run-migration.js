@@ -8,6 +8,8 @@ const SKIP_CODES = new Set([
   2443,  // constraint does not exist (al intentar DROP)
   904,   // invalid identifier (columna no existe al intentar DROP)
   2261,  // unique constraint already exists
+  955,   // table/view name already used
+  2264,  // constraint name already used
 ]);
 
 const migrations = [
@@ -50,6 +52,22 @@ const migrations = [
   `CREATE INDEX idx_egresos_campana       ON egresos(campana_id)`,
   `CREATE INDEX idx_remisiones_conductor  ON remisiones(conductor_id)`,
   `CREATE INDEX idx_plagas_tipo_id        ON plagas(tipo_id)`,
+
+  // ── campanas_parcelas: tabla N:M ───────────────────────────────────
+  `CREATE TABLE campanas_parcelas (campana_id NUMBER(10) NOT NULL, parcela_id NUMBER(10) NOT NULL, CONSTRAINT pk_campanas_parcelas PRIMARY KEY (campana_id, parcela_id), CONSTRAINT fk_cp_campana FOREIGN KEY (campana_id) REFERENCES campanas(id) ON DELETE CASCADE, CONSTRAINT fk_cp_parcela FOREIGN KEY (parcela_id) REFERENCES parcelas(id) ON DELETE CASCADE)`,
+  `CREATE INDEX idx_campanas_parcelas_p ON campanas_parcelas(parcela_id)`,
+
+  // ── CHECK constraints tipo/categoria (NOVALIDATE = no valida filas existentes) ─
+  `ALTER TABLE ingresos ADD CONSTRAINT chk_ingresos_tipo CHECK (tipo IN ('Venta', 'Subsidio', 'Préstamo', 'Otro')) ENABLE NOVALIDATE`,
+  `ALTER TABLE egresos  ADD CONSTRAINT chk_egresos_tipo  CHECK (tipo IN ('Insumos', 'Operación', 'Mantenimiento', 'Personal', 'Otro')) ENABLE NOVALIDATE`,
+  `ALTER TABLE egresos  ADD CONSTRAINT chk_egresos_categoria CHECK (categoria IN ('Fertilizantes', 'Combustible', 'Maquinaria', 'Nómina', 'Transporte', 'Otro') OR categoria IS NULL) ENABLE NOVALIDATE`,
+
+  // ── remisiones: enviado_por_id como FK a usuarios ─────────────────
+  `ALTER TABLE remisiones ADD enviado_por_id NUMBER(10)`,
+  `ALTER TABLE remisiones ADD CONSTRAINT fk_remisiones_enviado FOREIGN KEY (enviado_por_id) REFERENCES usuarios(id) ON DELETE SET NULL`,
+  `ALTER TABLE remisiones DROP COLUMN enviado_por`,
+  `ALTER TABLE remisiones DROP COLUMN enviado_cc`,
+  `CREATE INDEX idx_remisiones_enviado ON remisiones(enviado_por_id)`,
 ];
 
 async function main() {
