@@ -171,6 +171,7 @@ const CropManagementDashboard = () => {
   const [riegoModalOpen, setRiegoModalOpen] = useState(false);
   const [riegoEditing, setRiegoEditing] = useState(null);
   const [riegoForm, setRiegoForm] = useState({
+    parcelaId: '',
     tipo: '',
     consumoAgua: '',
     ultimoRiego: new Date().toISOString().slice(0, 10),
@@ -730,6 +731,7 @@ const CropManagementDashboard = () => {
   const handleAddRiego = () => {
     setRiegoEditing(null);
     setRiegoForm({
+      parcelaId: '',
       tipo: '',
       consumoAgua: '',
       ultimoRiego: new Date().toISOString().slice(0, 10),
@@ -741,6 +743,7 @@ const CropManagementDashboard = () => {
   const handleEditRiego = (item) => {
     setRiegoEditing(item);
     setRiegoForm({
+      parcelaId: item.parcelaId || '',
       tipo: item.tipo || '',
       consumoAgua: item.consumoAgua || '',
       ultimoRiego: item.ultimoRiego || new Date().toISOString().slice(0, 10),
@@ -755,6 +758,7 @@ const CropManagementDashboard = () => {
 
   const submitRiego = async () => {
     const payload = {
+      parcelaId: riegoForm.parcelaId || null,
       tipo: riegoForm.tipo,
       consumoAgua: riegoForm.consumoAgua,
       ultimoRiego: riegoForm.ultimoRiego || null,
@@ -1817,11 +1821,16 @@ const CropManagementDashboard = () => {
             <h3 className="am-modal-title">{plagaEditing ? 'Editar registro de plaga' : 'Nuevo registro de plaga'}</h3>
             <div className="am-modal-body">
               <div className="am-modal-row">
-                <label>Cultivo afectado</label>
-                <input
+                <label>Parcela afectada</label>
+                <select
                   value={plagaForm.cultivo}
                   onChange={(e) => setPlagaForm({ ...plagaForm, cultivo: e.target.value })}
-                />
+                >
+                  <option value="">— Seleccionar parcela —</option>
+                  {parcelas.map((p) => (
+                    <option key={p.id} value={p.nombre}>{p.nombre}</option>
+                  ))}
+                </select>
               </div>
               <div className="am-modal-row">
                 <label>Tipo de plaga</label>
@@ -1912,6 +1921,18 @@ const CropManagementDashboard = () => {
           <div className="am-modal">
             <h3 className="am-modal-title">{riegoEditing ? 'Editar programación de riego' : 'Nueva programación de riego'}</h3>
             <div className="am-modal-body">
+              <div className="am-modal-row">
+                <label>Parcela</label>
+                <select
+                  value={riegoForm.parcelaId}
+                  onChange={(e) => setRiegoForm({ ...riegoForm, parcelaId: e.target.value })}
+                >
+                  <option value="">— Seleccionar parcela —</option>
+                  {parcelas.map((p) => (
+                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                  ))}
+                </select>
+              </div>
               <div className="am-modal-row">
                 <label>Tipo de riego</label>
                 <input

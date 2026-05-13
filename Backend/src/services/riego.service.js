@@ -12,6 +12,7 @@ async function upsertTipoRiego(nombre) {
 
 const SELECT_FIELDS = `
   r.id            AS "id",
+  r.parcela_id    AS "parcelaId",
   p.nombre        AS "parcela",
   tr.nombre       AS "tipo",
   r.consumo_agua  AS "consumoAgua",
@@ -47,19 +48,21 @@ export const riegoService = {
       consumoAgua = null,
       ultimoRiego = null,
       proximoRiego = null,
+      parcelaId = null,
     } = payload || {};
 
     const tipoId = await upsertTipoRiego(tipo);
 
     const id = await insertReturningId(
-      `INSERT INTO riego (tipo_id, consumo_agua, ultimo_riego, proximo_riego, usuario_id)
-       VALUES (:tipoId, :consumoAgua, :ultimoRiego, :proximoRiego, :userId)
+      `INSERT INTO riego (tipo_id, consumo_agua, ultimo_riego, proximo_riego, usuario_id, parcela_id)
+       VALUES (:tipoId, :consumoAgua, :ultimoRiego, :proximoRiego, :userId, :parcelaId)
        RETURNING id INTO :outId`,
       {
         tipoId, consumoAgua,
         ultimoRiego: toDate(ultimoRiego),
         proximoRiego: toDate(proximoRiego),
         userId,
+        parcelaId: parcelaId ? Number(parcelaId) : null,
       }
     );
 
@@ -85,6 +88,10 @@ export const riegoService = {
     if ('tipo' in changes) {
       binds.tipoId = await upsertTipoRiego(changes.tipo);
       setParts.push('tipo_id = :tipoId');
+    }
+    if ('parcelaId' in changes) {
+      setParts.push('parcela_id = :parcelaId');
+      binds.parcelaId = changes.parcelaId ? Number(changes.parcelaId) : null;
     }
 
     if (!setParts.length) return this.getById(userId, id);
