@@ -49,8 +49,7 @@ export const fertilizantesController = {
   async masFertilizanteConsumido(req, res) {
     const { desde, hasta } = req.query || {};
     const data = await fertilizantesService.masFertilizanteConsumido(req.user.id, desde, hasta);
-    if (!data) return res.status(404).json({ error: 'Sin registros en el período indicado' });
-    res.status(200).json({ data });
+    res.status(200).json({ data: data ?? null });
   },
 
   async aplicarLote(req, res) {

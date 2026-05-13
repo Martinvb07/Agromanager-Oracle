@@ -159,6 +159,46 @@ const CampanaDetail = () => {
     loadFiltered();
   }, [id, diarioFilter.desde, diarioFilter.hasta]);
 
+  // Pad de firma en el formulario de remisión — debe estar antes de cualquier return condicional
+  useEffect(() => {
+    if (!firmaFormModal) return;
+    const canvas = firmaFormCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+
+    const getPos = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const src  = e.touches ? e.touches[0] : e;
+      return {
+        x: (src.clientX - rect.left) * (canvas.width / rect.width),
+        y: (src.clientY - rect.top)  * (canvas.height / rect.height),
+      };
+    };
+    const down  = (e) => { e.preventDefault(); firmaFormDrawing.current = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+    const move  = (e) => { e.preventDefault(); if (!firmaFormDrawing.current) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+    const up    = ()  => { firmaFormDrawing.current = false; };
+
+    canvas.addEventListener('mousedown',  down);
+    canvas.addEventListener('mousemove',  move);
+    canvas.addEventListener('mouseup',    up);
+    canvas.addEventListener('touchstart', down, { passive: false });
+    canvas.addEventListener('touchmove',  move, { passive: false });
+    canvas.addEventListener('touchend',   up);
+    return () => {
+      canvas.removeEventListener('mousedown',  down);
+      canvas.removeEventListener('mousemove',  move);
+      canvas.removeEventListener('mouseup',    up);
+      canvas.removeEventListener('touchstart', down);
+      canvas.removeEventListener('touchmove',  move);
+      canvas.removeEventListener('touchend',   up);
+    };
+  }, [firmaFormModal]);
+
   useEffect(() => {
     if (!signatureModalOpen) return;
 
@@ -472,46 +512,6 @@ const CampanaDetail = () => {
       setRemisionSaving(false);
     }
   };
-
-  // Pad de firma en el formulario de remisión
-  useEffect(() => {
-    if (!firmaFormModal) return;
-    const canvas = firmaFormCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-
-    const getPos = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const src  = e.touches ? e.touches[0] : e;
-      return {
-        x: (src.clientX - rect.left) * (canvas.width / rect.width),
-        y: (src.clientY - rect.top)  * (canvas.height / rect.height),
-      };
-    };
-    const down  = (e) => { e.preventDefault(); firmaFormDrawing.current = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
-    const move  = (e) => { e.preventDefault(); if (!firmaFormDrawing.current) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
-    const up    = ()  => { firmaFormDrawing.current = false; };
-
-    canvas.addEventListener('mousedown',  down);
-    canvas.addEventListener('mousemove',  move);
-    canvas.addEventListener('mouseup',    up);
-    canvas.addEventListener('touchstart', down, { passive: false });
-    canvas.addEventListener('touchmove',  move, { passive: false });
-    canvas.addEventListener('touchend',   up);
-    return () => {
-      canvas.removeEventListener('mousedown',  down);
-      canvas.removeEventListener('mousemove',  move);
-      canvas.removeEventListener('mouseup',    up);
-      canvas.removeEventListener('touchstart', down);
-      canvas.removeEventListener('touchmove',  move);
-      canvas.removeEventListener('touchend',   up);
-    };
-  }, [firmaFormModal]);
 
   const guardarFirmaForm = () => {
     const canvas = firmaFormCanvasRef.current;
