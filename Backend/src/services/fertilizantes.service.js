@@ -133,6 +133,28 @@ export const fertilizantesService = {
     return { id, fertilizante_id: fertilizanteId, cantidad_kg, notas };
   },
 
+  async sincronizarStock(userId) {
+    await query(
+      `BEGIN sp_sincronizar_stock(:userId); END;`,
+      { userId }
+    );
+    return this.list(userId);
+  },
+
+  async masFertilizanteConsumido(userId, desde, hasta) {
+    const result = await query(
+      `SELECT fn_fertilizante_mas_consumido(:userId, :desde, :hasta) AS "fertilizanteId" FROM dual`,
+      {
+        userId,
+        desde: toDate(desde) || new Date(new Date().setMonth(new Date().getMonth() - 1)),
+        hasta: toDate(hasta) || new Date(),
+      }
+    );
+    const fid = result.rows[0]?.fertilizanteId;
+    if (!fid) return null;
+    return this.getById(userId, fid);
+  },
+
   async aplicarLote(userId, parcelaId, items, fecha) {
     const binds = {
       parcelaId: Number(parcelaId),

@@ -1,4 +1,5 @@
 import { query, insertReturningId, toDate } from '../config/db.js';
+import oracledb from 'oracledb';
 
 const ING_FIELDS = `
   i.id         AS "id",
@@ -71,6 +72,46 @@ export const finanzasService = {
       { id, userId }
     );
     return result.rows[0] || null;
+  },
+
+  async balancePeriodo(userId, desde, hasta) {
+    const result = await query(
+      `SELECT fn_balance_periodo(:userId, :desde, :hasta) AS "balance" FROM dual`,
+      {
+        userId: Number(userId),
+        desde: toDate(desde) || new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        hasta: toDate(hasta) || new Date(),
+      }
+    );
+    return { balance: result.rows[0]?.balance ?? 0, desde, hasta };
+  },
+
+  async registrarInversiones(userId, siembraId, items) {
+    if (!Array.isArray(items) || items.length === 0)
+      throw Object.assign(new Error('items debe ser un array no vacío'), { status: 400 });
+
+    const binds = {
+      siembraId: Number(siembraId),
+      userId: Number(userId),
+    };
+    const constructors = items.map((item, i) => {
+      binds[`fecha${i}`] = toDate(item.fecha) || new Date();
+      binds[`monto${i}`] = Number(item.monto);
+      binds[`desc${i}`] = item.descripcion ?? null;
+      return `t_inversion_item(:fecha${i}, :monto${i}, :desc${i})`;
+    });
+
+    await query(
+      `BEGIN
+         sp_registrar_inversiones(
+           :siembraId,
+           :userId,
+           t_lista_inversiones(${constructors.join(', ')})
+         );
+       END;`,
+      binds
+    );
+    return { registradas: items.length, siembra_id: Number(siembraId) };
   },
 
   async createEgreso(userId, payload) {

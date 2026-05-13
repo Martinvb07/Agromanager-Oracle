@@ -14,6 +14,7 @@ import cambiosRoutes from './cambios.routes.js';
 import aiRoutes from './ai.routes.js';
 import fertilizantesRoutes from './fertilizantes.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
+import siembrasRoutes from './siembras.routes.js';
 
 const router = Router();
 
@@ -32,5 +33,6 @@ router.use('/cambios', cambiosRoutes);
 router.use('/ai', aiRoutes);
 router.use('/fertilizantes', fertilizantesRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/siembras',  siembrasRoutes);
 
 export default router;

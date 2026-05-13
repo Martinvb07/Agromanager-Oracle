@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Settings } from 'lucide-react';
 import jsPDF from 'jspdf';
-import { actualizarCampana, crearCampanaDia, eliminarCampanaDia, fetchCampana, fetchCampanaDiario, actualizarCampanaDia, fetchRemisiones, crearRemision, actualizarRemision, eliminarRemision } from '../services/api.js';
+import { actualizarCampana, crearCampanaDia, eliminarCampanaDia, fetchCampana, fetchCampanaDiario, actualizarCampanaDia, fetchRemisiones, crearRemision, actualizarRemision, eliminarRemision, fetchRendimientoCampana, fetchSiembras, registrarInversiones } from '../services/api.js';
 import { campanas as mockCampanas } from '../services/mockData.js';
 
 const normalizeDateInput = (value) => {
@@ -19,6 +19,12 @@ const CampanaDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [campana, setCampana] = useState(null);
+  const [rendimiento, setRendimiento] = useState(null);
+  const [siembras, setSiembras] = useState([]);
+  const [invModal, setInvModal] = useState(false);
+  const [invSiembra, setInvSiembra] = useState(null);
+  const [invLista, setInvLista] = useState([{ fecha: new Date().toISOString().slice(0,10), monto:'', descripcion:'' }]);
+  const [guardandoInv, setGuardandoInv] = useState(false);
   const [form, setForm] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -70,6 +76,8 @@ const CampanaDetail = () => {
       try {
         const data = await fetchCampana(id);
         setCampana(data);
+        fetchRendimientoCampana(id).then(setRendimiento).catch(() => {});
+        fetchSiembras().then(setSiembras).catch(() => {});
         setForm({
           nombre: data.nombre || '',
           fechaInicio: normalizeDateInput(data.fechaInicio),
@@ -599,6 +607,38 @@ const CampanaDetail = () => {
           <p style={{ color: '#b91c1c', marginBottom: '12px' }}>{error}</p>
         )}
 
+        {/* Card rendimiento — fn_rendimiento_campana */}
+        {rendimiento !== null && (
+          <div
+            className="am-card am-p-4"
+            style={{ marginBottom: '20px', background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', borderLeft: '4px solid #16a34a', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}
+          >
+            <div style={{ textAlign: 'center', minWidth: '100px' }}>
+              <p style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase' }}>
+                Rendimiento <span style={{ fontSize: '10px' }}>(fn_rendimiento_campana)</span>
+              </p>
+              <p style={{ fontSize: '28px', fontWeight: 800, color: '#15803d' }}>
+                {Number(rendimiento.rendimiento_ha ?? 0).toFixed(2)}
+              </p>
+              <p style={{ fontSize: '12px', color: '#374151' }}>bultos / ha</p>
+            </div>
+            {campana && (
+              <>
+                <div style={{ textAlign: 'center', minWidth: '80px' }}>
+                  <p style={{ fontSize: '11px', color: '#6b7280' }}>Producción total</p>
+                  <p style={{ fontSize: '20px', fontWeight: 700, color: '#1f2937' }}>{campana.produccionTotal ?? '-'}</p>
+                  <p style={{ fontSize: '12px', color: '#374151' }}>bultos</p>
+                </div>
+                <div style={{ textAlign: 'center', minWidth: '80px' }}>
+                  <p style={{ fontSize: '11px', color: '#6b7280' }}>Ha cosechadas</p>
+                  <p style={{ fontSize: '20px', fontWeight: 700, color: '#1f2937' }}>{campana.hectareasCosechadas ?? '-'}</p>
+                  <p style={{ fontSize: '12px', color: '#374151' }}>ha</p>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         <div className="am-grid am-grid-2-md" style={{ marginBottom: '24px' }}>
           <div className="am-card am-p-6">
             <h2 className="am-card-header">Resumen de la campaña</h2>
@@ -672,6 +712,43 @@ const CampanaDetail = () => {
               </p>
             </div>
           </div>
+
+          {/* Siembras vinculadas — V_SIEMBRAS_RESUMEN + sp_registrar_inversiones */}
+          {siembras.length > 0 && (
+            <div className="am-card am-p-6" style={{ gridColumn: '1 / -1' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px' }}>
+                <h2 className="am-card-header">
+                  Siembras de esta campaña
+                  <span style={{ fontSize:'10px', color:'#6b7280', fontWeight:400, marginLeft:'6px' }}>(V_SIEMBRAS_RESUMEN)</span>
+                </h2>
+              </div>
+              <div style={{ display:'grid', gap:'8px' }}>
+                {siembras.map((s) => (
+                  <div key={s.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 14px', background:'#f8fafc', borderRadius:'8px', flexWrap:'wrap', gap:'8px' }}>
+                    <div>
+                      <p style={{ fontSize:'14px', fontWeight:600, color:'#1f2937' }}>{s.tipoSemilla} — {s.parcela}</p>
+                      <p style={{ fontSize:'12px', color:'#6b7280' }}>
+                        {s.fechaSiembra ? String(s.fechaSiembra).slice(0,10) : ''} · {s.cantidadKg} kg · Estado: {s.estado}
+                      </p>
+                    </div>
+                    <div style={{ display:'flex', gap:'12px', alignItems:'center' }}>
+                      <span style={{ fontSize:'13px', fontWeight:700, color:'#1d4ed8' }}>
+                        Inversión: ${Number(s.inversionTotal ?? 0).toLocaleString()}
+                      </span>
+                      <button
+                        className="am-badge am-info"
+                        style={{ cursor:'pointer', fontSize:'12px' }}
+                        onClick={() => { setInvSiembra(s); setInvLista([{ fecha: new Date().toISOString().slice(0,10), monto:'', descripcion:'' }]); setInvModal(true); }}
+                        title="sp_registrar_inversiones"
+                      >
+                        + Inversión
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="am-card am-p-6">
             <h2 className="am-card-header">Parte diario de cosecha</h2>
@@ -1043,6 +1120,69 @@ const CampanaDetail = () => {
           </button>
         </div>
       </div>
+
+      {/* Modal inversiones — sp_registrar_inversiones */}
+      {invModal && invSiembra && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div className="am-card am-p-6" style={{ width:'100%', maxWidth:'540px', maxHeight:'80vh', overflow:'auto' }}>
+            <h3 className="am-card-header" style={{ marginBottom:'16px' }}>
+              💰 Registrar Inversiones
+              <span style={{ fontSize:'10px', color:'#6b7280', fontWeight:400, marginLeft:'6px' }}>(sp_registrar_inversiones)</span>
+            </h3>
+            <p style={{ fontSize:'13px', color:'#374151', marginBottom:'14px' }}>
+              Siembra: <strong>{invSiembra.tipoSemilla}</strong> — {invSiembra.parcela}
+            </p>
+            <div style={{ display:'grid', gap:'8px', marginBottom:'12px' }}>
+              {invLista.map((row, i) => (
+                <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto', gap:'8px', alignItems:'center' }}>
+                  <input type="date" value={row.fecha}
+                    onChange={(e) => setInvLista((p) => p.map((r,idx) => idx===i ? {...r, fecha:e.target.value} : r))}
+                    style={{ padding:'6px 8px', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'13px' }} />
+                  <input type="number" placeholder="Monto" min="1" value={row.monto}
+                    onChange={(e) => setInvLista((p) => p.map((r,idx) => idx===i ? {...r, monto:e.target.value} : r))}
+                    style={{ padding:'6px 8px', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'13px' }} />
+                  <input type="text" placeholder="Descripción" value={row.descripcion}
+                    onChange={(e) => setInvLista((p) => p.map((r,idx) => idx===i ? {...r, descripcion:e.target.value} : r))}
+                    style={{ padding:'6px 8px', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'13px' }} />
+                  <button onClick={() => setInvLista((p) => p.filter((_,idx) => idx!==i))}
+                    style={{ padding:'6px 10px', background:'#fee2e2', color:'#dc2626', border:'none', borderRadius:'6px', cursor:'pointer' }}>✕</button>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setInvLista((p) => [...p, { fecha: new Date().toISOString().slice(0,10), monto:'', descripcion:'' }])}
+              style={{ marginBottom:'16px', padding:'6px 12px', background:'#eff6ff', color:'#2563eb', border:'1px solid #bfdbfe', borderRadius:'6px', cursor:'pointer', fontSize:'13px' }}
+            >+ Agregar fila</button>
+            <div style={{ display:'flex', gap:'8px', justifyContent:'flex-end' }}>
+              <button className="am-badge am-muted" style={{ cursor:'pointer' }} onClick={() => setInvModal(false)}>Cancelar</button>
+              <button
+                className="am-badge am-success"
+                style={{ cursor: guardandoInv ? 'not-allowed':'pointer', opacity: guardandoInv ? 0.6:1 }}
+                disabled={guardandoInv}
+                onClick={async () => {
+                  const items = invLista.filter((r) => Number(r.monto) > 0)
+                    .map((r) => ({ fecha: r.fecha, monto: Number(r.monto), descripcion: r.descripcion || null }));
+                  if (!items.length) return window.alert('Ingresá al menos una inversión con monto válido');
+                  setGuardandoInv(true);
+                  try {
+                    await registrarInversiones(invSiembra.id, items);
+                    const updated = await fetchSiembras();
+                    setSiembras(updated);
+                    setInvModal(false);
+                    window.alert('✅ Inversiones registradas');
+                  } catch (err) {
+                    window.alert(`Error: ${err.message}`);
+                  } finally {
+                    setGuardandoInv(false);
+                  }
+                }}
+              >
+                {guardandoInv ? 'Guardando…' : 'Guardar Inversiones'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

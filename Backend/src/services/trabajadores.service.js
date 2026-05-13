@@ -104,4 +104,100 @@ export const trabajadoresService = {
     );
     return (result.rowsAffected || 0) > 0;
   },
+
+  async listConHoras(userId) {
+    const result = await query(
+      `SELECT trabajador_id   AS "id",
+              trabajador_nombre AS "nombre",
+              cargo           AS "cargo",
+              estado          AS "estado",
+              salario         AS "salario",
+              horas_totales   AS "horasTotales",
+              horas_mes_actual AS "horasMesActual",
+              dias_trabajados AS "diasTrabajados"
+         FROM V_TRABAJADORES_HORAS
+        WHERE usuario_id = :userId
+        ORDER BY trabajador_nombre`,
+      { userId }
+    );
+    return result.rows;
+  },
+
+  async horasTrabajador(userId, trabajadorId, desde, hasta) {
+    const result = await query(
+      `SELECT fn_horas_trabajador(:trabajadorId, :desde, :hasta) AS "horas" FROM dual`,
+      {
+        trabajadorId: Number(trabajadorId),
+        desde: toDate(desde) || new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        hasta: toDate(hasta) || new Date(),
+      }
+    );
+    return { trabajador_id: Number(trabajadorId), horas: result.rows[0]?.horas ?? 0 };
+  },
+
+  async registrarJornadas(userId, trabajadorId, lista) {
+    if (!Array.isArray(lista) || lista.length === 0)
+      throw Object.assign(new Error('lista no puede estar vacía'), { status: 400 });
+
+    const binds = {
+      trabajadorId: Number(trabajadorId),
+      userId: Number(userId),
+    };
+    const constructors = lista.map((item, i) => {
+      binds[`fecha${i}`]  = toDate(item.fecha) || new Date();
+      binds[`horas${i}`]  = Number(item.horas);
+      binds[`desc${i}`]   = item.descripcion ?? null;
+      return `t_hora_lab(:fecha${i}, :horas${i}, :desc${i})`;
+    });
+
+    await query(
+      `BEGIN
+         sp_registrar_jornadas(
+           :trabajadorId,
+           :userId,
+           t_lista_horas(${constructors.join(', ')})
+         );
+       END;`,
+      binds
+    );
+    return { registradas: lista.length, trabajador_id: Number(trabajadorId) };
+  },
+
+  async liquidarNomina(userId, mes, anio) {
+    // Llama sp_liquidar_nomina en un bloque anónimo (el OUT de colección no es bindeable
+    // desde oracledb thin mode; el procedimiento hace COMMIT internamente).
+    await query(
+      `DECLARE v_res t_lista_nomina;
+       BEGIN sp_liquidar_nomina(:userId, :mes, :anio, v_res); END;`,
+      { userId: Number(userId), mes: Number(mes), anio: Number(anio) }
+    );
+
+    // Devuelve el resumen calculado para la respuesta al frontend
+    const result = await query(
+      `SELECT t.id        AS "id",
+              t.nombre    AS "nombre",
+              t.salario   AS "salario",
+              NVL(SUM(h.horas), 0) AS "horasMes",
+              ROUND((t.salario / 240) * NVL(SUM(h.horas), 0), 2) AS "pagoCaiculado"
+         FROM trabajadores t
+         JOIN estados e ON e.id = t.estado_id AND e.nombre = 'Activo'
+         LEFT JOIN horas_laboradas h
+                ON h.trabajador_id = t.id
+               AND TRUNC(h.fecha, 'MM') =
+                   TRUNC(TO_DATE(:anio2 || LPAD(:mes2, 2, '0') || '01', 'YYYYMMDD'), 'MM')
+        WHERE t.usuario_id = :userId2
+        GROUP BY t.id, t.nombre, t.salario
+        ORDER BY t.nombre`,
+      { anio2: Number(anio), mes2: Number(mes), userId2: Number(userId) }
+    );
+    return result.rows;
+  },
+
+  async costoNominaMes(userId, mes, anio) {
+    const result = await query(
+      `SELECT fn_costo_nomina_mes(:userId, :mes, :anio) AS "costo" FROM dual`,
+      { userId: Number(userId), mes: Number(mes), anio: Number(anio) }
+    );
+    return { mes: Number(mes), anio: Number(anio), costo: result.rows[0]?.costo ?? 0 };
+  },
 };

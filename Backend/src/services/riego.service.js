@@ -113,4 +113,12 @@ export const riegoService = {
     );
     return (result.rowsAffected || 0) > 0;
   },
+
+  async parcelasRiegoVencido(userId, diasLimite = 7) {
+    const result = await query(
+      `SELECT fn_parcelas_riego_vencido(:userId, :dias) AS "count" FROM dual`,
+      { userId: Number(userId), dias: Number(diasLimite) }
+    );
+    return { parcelas_vencidas: result.rows[0]?.count ?? 0, dias_limite: Number(diasLimite) };
+  },
 };

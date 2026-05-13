@@ -12,6 +12,7 @@ import PlagasGrid from '../components/sections/PlagasGrid.jsx';
 import RiegoTable from '../components/sections/RiegoTable.jsx';
 import FertilizantesTable from '../components/sections/FertilizantesTable.jsx';
 import ReportesGrid from '../components/sections/ReportesGrid.jsx';
+import SiembrasTable from '../components/sections/SiembrasTable.jsx';
 import CampanasTable from '../components/sections/CampanasTable.jsx';
 import TractorLoader from '../components/TractorLoader.jsx';
 
@@ -26,6 +27,16 @@ import {
   fetchRiego, crearRiego, actualizarRiego, eliminarRiego,
   fetchCampanas, crearCampana, actualizarCampana, eliminarCampana,
   fetchFertilizantes, crearFertilizante, actualizarFertilizante, eliminarFertilizante,
+  // Nuevas funciones PL/SQL
+  sincronizarStock, fetchFertilizanteMasConsumido, aplicarFertilizantesLote,
+  cerrarCampana,
+  liquidarNomina, fetchCostoNominaMes,
+  fetchBalancePeriodo,
+  fetchParcelasRiegoVencido,
+  fetchDashboardStats, fetchResumenFinanciero,
+  fetchTrabajadoresConHoras, registrarJornadas,
+  fetchSiembras, fetchStockBajo,
+  registrarInversiones,
 } from '../services/api.js';
 
 const CropManagementDashboard = () => {
@@ -45,6 +56,29 @@ const CropManagementDashboard = () => {
   const [plagas, setPlagas] = useState([]);
   const [riego, setRiego] = useState([]);
   const [fertilizantes, setFertilizantes] = useState([]);
+
+  // Estado: V_DASHBOARD, V_RESUMEN_FINANCIERO, V_SIEMBRAS_RESUMEN
+  const [dbStats, setDbStats]                         = useState(null);
+  const [resumenFinanciero, setResumenFinanciero]     = useState([]);
+  const [siembras, setSiembras]                       = useState([]);
+  const [stockBajo, setStockBajo]                     = useState([]);
+
+  // Modal inversiones (sp_registrar_inversiones) — usado desde SiembrasTable
+  const [inversionModal, setInversionModal]           = useState(false);
+  const [inversionSiembra, setInversionSiembra]       = useState(null);
+  const [inversionLista, setInversionLista]           = useState([{ fecha: new Date().toISOString().slice(0,10), monto: '', descripcion: '' }]);
+  const [guardandoInv, setGuardandoInv]               = useState(false);
+
+  // Estado: nuevas funciones PL/SQL
+  const [masConsumidoFert, setMasConsumidoFert]       = useState(null);
+  const [sincronizando, setSincronizando]             = useState(false);
+  const [cerrando, setCerrando]                       = useState(null);
+  const [costoNomina, setCostoNomina]                 = useState(null);
+  const [liquidandoNomina, setLiquidandoNomina]       = useState(false);
+  const [nominaResultModal, setNominaResultModal]     = useState(false);
+  const [nominaResult, setNominaResult]               = useState([]);
+  const [balancePeriodo, setBalancePeriodo]           = useState(null);
+  const [parcelasRiegoVencido, setParcelasRiegoVencido] = useState(0);
 
   // Modales: parcelas
   const [parcelaModalOpen, setParcelaModalOpen] = useState(false);
@@ -333,6 +367,31 @@ const CropManagementDashboard = () => {
     fetchFertilizantes()
       .then(setFertilizantes)
       .catch(() => setFertilizantes([]));
+
+    // Carga inicial: vistas Oracle
+    fetchDashboardStats()
+      .then(setDbStats)
+      .catch(() => {});
+    fetchResumenFinanciero()
+      .then(setResumenFinanciero)
+      .catch(() => {});
+    fetchSiembras()
+      .then(setSiembras)
+      .catch(() => {});
+    fetchStockBajo()
+      .then(setStockBajo)
+      .catch(() => {});
+
+    // Carga inicial: datos de funciones PL/SQL
+    fetchParcelasRiegoVencido(7)
+      .then((d) => setParcelasRiegoVencido(d?.parcelas_vencidas ?? 0))
+      .catch(() => {});
+    fetchCostoNominaMes()
+      .then((d) => setCostoNomina(d?.costo ?? null))
+      .catch(() => {});
+    fetchFertilizanteMasConsumido()
+      .then(setMasConsumidoFert)
+      .catch(() => {});
   }, []);
 
   const handleAddTrabajador = async () => {
@@ -776,6 +835,124 @@ const CropManagementDashboard = () => {
     setDeleteFertilizanteId(null);
   };
 
+  // ─── Handlers PL/SQL ──────────────────────────────────────────────────────
+
+  const handleSincronizarStock = async () => {
+    setSincronizando(true);
+    try {
+      const data = await sincronizarStock();
+      if (Array.isArray(data)) setFertilizantes(data);
+      const masC = await fetchFertilizanteMasConsumido();
+      setMasConsumidoFert(masC);
+      window.alert('✅ Stock sincronizado correctamente');
+    } catch (err) {
+      window.alert(`Error al sincronizar: ${err.message}`);
+    } finally {
+      setSincronizando(false);
+    }
+  };
+
+  const handleCerrarCampana = async (id) => {
+    if (!window.confirm('¿Cerrar esta campaña? Se marcarán las siembras como Cosechada y las parcelas como Inactiva.')) return;
+    setCerrando(id);
+    try {
+      await cerrarCampana(id);
+      const updated = await fetchCampanas();
+      setCampanas(updated);
+      window.alert('✅ Campaña cerrada correctamente');
+    } catch (err) {
+      window.alert(`Error al cerrar campaña: ${err.message}`);
+    } finally {
+      setCerrando(null);
+    }
+  };
+
+  const handleLiquidarNomina = async () => {
+    const now  = new Date();
+    const mes  = now.getMonth() + 1;
+    const anio = now.getFullYear();
+    if (!window.confirm(`¿Liquidar nómina de ${mes}/${anio}? Se registrarán egresos de Personal automáticamente.`)) return;
+    setLiquidandoNomina(true);
+    try {
+      const res = await liquidarNomina(mes, anio);
+      setNominaResult(res.data || []);
+      const costo = await fetchCostoNominaMes(mes, anio);
+      setCostoNomina(costo?.costo ?? null);
+      const finData = await fetchFinanzas();
+      setEgresos(finData.egresos || []);
+      setNominaResultModal(true);
+    } catch (err) {
+      window.alert(`Error al liquidar nómina: ${err.message}`);
+    } finally {
+      setLiquidandoNomina(false);
+    }
+  };
+
+  const abrirInversionModal = (siembra) => {
+    setInversionSiembra(siembra);
+    setInversionLista([{ fecha: new Date().toISOString().slice(0, 10), monto: '', descripcion: '' }]);
+    setInversionModal(true);
+  };
+
+  const submitInversiones = async () => {
+    const items = inversionLista
+      .filter((r) => Number(r.monto) > 0)
+      .map((r) => ({ fecha: r.fecha, monto: Number(r.monto), descripcion: r.descripcion || null }));
+    if (!items.length) return window.alert('Ingresá al menos una inversión con monto válido');
+    setGuardandoInv(true);
+    try {
+      await registrarInversiones(inversionSiembra.id, items);
+      const updated = await fetchSiembras();
+      setSiembras(updated);
+      setInversionModal(false);
+      window.alert('✅ Inversiones registradas correctamente');
+    } catch (err) {
+      window.alert(`Error: ${err.message}`);
+    } finally {
+      setGuardandoInv(false);
+    }
+  };
+
+  const handleAplicarLote = async (parcelaId, items, fecha) => {
+    try {
+      await aplicarFertilizantesLote(parcelaId, items, fecha);
+      const [ferts, bajo, masC] = await Promise.all([
+        fetchFertilizantes(),
+        fetchStockBajo(),
+        fetchFertilizanteMasConsumido(),
+      ]);
+      setFertilizantes(ferts);
+      setStockBajo(bajo);
+      setMasConsumidoFert(masC);
+      window.alert('✅ Fertilizantes aplicados correctamente');
+    } catch (err) {
+      window.alert(`Error al aplicar: ${err.message}`);
+      throw err;
+    }
+  };
+
+  const handleRegistrarJornadas = async (trabajadorId, lista) => {
+    try {
+      await registrarJornadas(trabajadorId, lista);
+      const updated = await fetchTrabajadoresConHoras();
+      setTrabajadores(updated);
+      window.alert('✅ Jornadas registradas correctamente');
+    } catch (err) {
+      window.alert(`Error al registrar jornadas: ${err.message}`);
+    }
+  };
+
+  const handleFetchBalance = async (desde, hasta) => {
+    try {
+      const data = await fetchBalancePeriodo(desde, hasta);
+      setBalancePeriodo(data);
+    } catch (err) {
+      window.alert(`Error al consultar balance: ${err.message}`);
+    }
+  };
+
+  // ──────────────────────────────────────────────────────────────────────────
+
   const handleAddCampana = () => {
     setCampanaEditing(null);
     setCampanaForm({
@@ -842,6 +1019,8 @@ const CropManagementDashboard = () => {
         return (
           <DashboardOverview
             stats={dashboardStats}
+            dbStats={dbStats}
+            resumenFinanciero={resumenFinanciero}
             ingresos={ingresos}
             egresos={egresos}
             alerts={dashboardAlerts}
@@ -852,10 +1031,14 @@ const CropManagementDashboard = () => {
           <TrabajadoresTable
             trabajadores={trabajadores}
             calcularLiquidacion={calcularLiquidacion}
+            costoNomina={costoNomina}
+            liquidandoNomina={liquidandoNomina}
             onAdd={handleAddTrabajador}
             onEdit={handleEditTrabajador}
             onDelete={handleDeleteTrabajador}
             onLiquidar={handleLiquidarTrabajador}
+            onLiquidarNomina={handleLiquidarNomina}
+            onRegistrarJornadas={handleRegistrarJornadas}
           />
         );
       case 'finanzas':
@@ -863,8 +1046,10 @@ const CropManagementDashboard = () => {
           <FinanzasView
             ingresos={ingresos}
             egresos={egresos}
+            balancePeriodo={balancePeriodo}
             onAddIngreso={handleAddIngreso}
             onAddEgreso={handleAddEgreso}
+            onFetchBalance={handleFetchBalance}
           />
         );
       case 'maquinaria':
@@ -880,9 +1065,11 @@ const CropManagementDashboard = () => {
         return (
           <CampanasTable
             campanas={campanas}
+            cerrando={cerrando}
             onAdd={handleAddCampana}
             onEdit={handleEditCampana}
             onDelete={handleDeleteCampana}
+            onCerrar={handleCerrarCampana}
           />
         );
       case 'parcelas':
@@ -916,6 +1103,8 @@ const CropManagementDashboard = () => {
         return (
           <RiegoTable
             riego={riego}
+            parcelasVencidas={parcelasRiegoVencido}
+            diasLimite={7}
             onAdd={handleAddRiego}
             onEdit={handleEditRiego}
             onDelete={handleDeleteRiego}
@@ -925,9 +1114,22 @@ const CropManagementDashboard = () => {
         return (
           <FertilizantesTable
             fertilizantes={fertilizantes}
+            stockBajo={stockBajo}
+            masConsumido={masConsumidoFert}
+            parcelas={parcelas}
+            sincronizando={sincronizando}
             onAdd={handleAddFertilizante}
             onEdit={handleEditFertilizante}
             onDelete={handleDeleteFertilizante}
+            onSincronizar={handleSincronizarStock}
+            onAplicarLote={handleAplicarLote}
+          />
+        );
+      case 'siembras':
+        return (
+          <SiembrasTable
+            siembras={siembras}
+            onRegistrarInversiones={abrirInversionModal}
           />
         );
       case 'reportes':
@@ -940,6 +1142,86 @@ const CropManagementDashboard = () => {
   return (
     <div className="am-layout">
       {showLogoutLoader && <TractorLoader message="Cerrando sesión…" />}
+
+      {/* Modal inversiones — sp_registrar_inversiones */}
+      {inversionModal && inversionSiembra && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div className="am-card am-p-6" style={{ width:'100%', maxWidth:'540px', maxHeight:'80vh', overflow:'auto' }}>
+            <h3 className="am-card-header" style={{ marginBottom:'16px' }}>
+              💰 Registrar Inversiones
+              <span style={{ fontSize:'10px', color:'#6b7280', fontWeight:400, marginLeft:'6px' }}>(sp_registrar_inversiones)</span>
+            </h3>
+            <p style={{ fontSize:'13px', color:'#374151', marginBottom:'14px' }}>
+              Siembra: <strong>{inversionSiembra.tipoSemilla}</strong> — {inversionSiembra.parcela}
+            </p>
+            <div style={{ display:'grid', gap:'8px', marginBottom:'12px' }}>
+              {inversionLista.map((row, i) => (
+                <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto', gap:'8px', alignItems:'center' }}>
+                  <input type="date" value={row.fecha}
+                    onChange={(e) => setInversionLista((p) => p.map((r,idx) => idx===i ? {...r, fecha:e.target.value} : r))}
+                    style={{ padding:'6px 8px', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'13px' }} />
+                  <input type="number" placeholder="Monto" min="1" value={row.monto}
+                    onChange={(e) => setInversionLista((p) => p.map((r,idx) => idx===i ? {...r, monto:e.target.value} : r))}
+                    style={{ padding:'6px 8px', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'13px' }} />
+                  <input type="text" placeholder="Descripción" value={row.descripcion}
+                    onChange={(e) => setInversionLista((p) => p.map((r,idx) => idx===i ? {...r, descripcion:e.target.value} : r))}
+                    style={{ padding:'6px 8px', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'13px' }} />
+                  <button onClick={() => setInversionLista((p) => p.filter((_,idx) => idx!==i))}
+                    style={{ padding:'6px 10px', background:'#fee2e2', color:'#dc2626', border:'none', borderRadius:'6px', cursor:'pointer' }}>✕</button>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setInversionLista((p) => [...p, { fecha: new Date().toISOString().slice(0,10), monto:'', descripcion:'' }])}
+              style={{ marginBottom:'16px', padding:'6px 12px', background:'#eff6ff', color:'#2563eb', border:'1px solid #bfdbfe', borderRadius:'6px', cursor:'pointer', fontSize:'13px' }}
+            >+ Agregar fila</button>
+            <div style={{ display:'flex', gap:'8px', justifyContent:'flex-end' }}>
+              <button className="am-badge am-muted" style={{ cursor:'pointer' }} onClick={() => setInversionModal(false)}>Cancelar</button>
+              <button className="am-badge am-success"
+                style={{ cursor: guardandoInv ? 'not-allowed':'pointer', opacity: guardandoInv ? 0.6:1 }}
+                onClick={submitInversiones} disabled={guardandoInv}>
+                {guardandoInv ? 'Guardando…' : 'Guardar Inversiones'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal resultado liquidación nómina (sp_liquidar_nomina) */}
+      {nominaResultModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div className="am-card am-p-6" style={{ width:'100%', maxWidth:'560px', maxHeight:'80vh', overflow:'auto' }}>
+            <h3 className="am-card-header" style={{ marginBottom:'16px' }}>
+              💰 Nómina liquidada — {new Date().toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}
+            </h3>
+            <table className="am-table" style={{ marginBottom:'16px' }}>
+              <thead>
+                <tr>
+                  <th>Trabajador</th>
+                  <th>Horas</th>
+                  <th>Salario Base</th>
+                  <th>Pago</th>
+                </tr>
+              </thead>
+              <tbody>
+                {nominaResult.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.nombre}</td>
+                    <td>{r.horasMes}h</td>
+                    <td>${Number(r.salario).toLocaleString()}</td>
+                    <td style={{ fontWeight: 700, color: '#16a34a' }}>${Number(r.pagoCaiculado).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ textAlign:'right' }}>
+              <button className="am-badge am-muted" style={{ cursor:'pointer' }} onClick={() => setNominaResultModal(false)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Sidebar
         activeSection={activeSection}

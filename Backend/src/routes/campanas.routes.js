@@ -16,6 +16,9 @@ router.post('/:id/diario', requireAuth, asyncHandler(campanasController.createDi
 router.put('/:id/diario/:entryId', requireAuth, asyncHandler(campanasController.updateDiario));
 router.delete('/:id/diario/:entryId', requireAuth, asyncHandler(campanasController.removeDiario));
 
+router.post('/:id/cerrar',       requireAuth, asyncHandler(campanasController.cerrarCampana));
+router.get('/:id/rendimiento',   requireAuth, asyncHandler(campanasController.rendimientoCampana));
+
 router.get('/:id/remisiones', requireAuth, asyncHandler(campanasController.listRemisiones));
 router.post('/:id/remisiones', requireAuth, asyncHandler(campanasController.createRemision));
 router.put('/:id/remisiones/:remisionId', requireAuth, asyncHandler(campanasController.updateRemision));

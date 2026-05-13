@@ -41,6 +41,18 @@ export const fertilizantesController = {
     res.status(201).json({ data });
   },
 
+  async sincronizarStock(req, res) {
+    const data = await fertilizantesService.sincronizarStock(req.user.id);
+    res.status(200).json({ data, message: 'Stock sincronizado correctamente' });
+  },
+
+  async masFertilizanteConsumido(req, res) {
+    const { desde, hasta } = req.query || {};
+    const data = await fertilizantesService.masFertilizanteConsumido(req.user.id, desde, hasta);
+    if (!data) return res.status(404).json({ error: 'Sin registros en el período indicado' });
+    res.status(200).json({ data });
+  },
+
   async aplicarLote(req, res) {
     const { parcela_id, items, fecha } = req.body || {};
     if (!parcela_id) return res.status(400).json({ error: 'parcela_id es requerido' });

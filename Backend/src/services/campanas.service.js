@@ -415,6 +415,27 @@ export const campanasService = {
     return true;
   },
 
+  async cerrarCampana(userId, campanaId) {
+    await query(
+      `BEGIN sp_cerrar_campana(:campanaId, :userId); END;`,
+      { campanaId: Number(campanaId), userId: Number(userId) }
+    );
+    return this.getById(userId, campanaId);
+  },
+
+  async rendimientoCampana(userId, campanaId) {
+    const campana = await this.getById(userId, campanaId);
+    if (!campana) return null;
+    const result = await query(
+      `SELECT fn_rendimiento_campana(:campanaId) AS "rendimiento" FROM dual`,
+      { campanaId: Number(campanaId) }
+    );
+    return {
+      campana_id: Number(campanaId),
+      rendimiento_ha: result.rows[0]?.rendimiento ?? 0,
+    };
+  },
+
   async removeParcela(userId, campanaId, parcelaId) {
     const campana = await this.getById(userId, campanaId);
     if (!campana) return false;

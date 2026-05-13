@@ -399,3 +399,138 @@ export async function eliminarFertilizante(id) {
   await request(`/fertilizantes/${id}`, { method: 'DELETE' });
   return true;
 }
+
+export async function fetchStockBajo() {
+  const json = await request('/fertilizantes/stock-bajo');
+  return json.data;
+}
+
+export async function aplicarFertilizantesLote(parcelaId, items, fecha) {
+  const json = await request('/fertilizantes/aplicar-lote', {
+    method: 'POST',
+    body: JSON.stringify({ parcela_id: parcelaId, items, fecha }),
+  });
+  return json.data;
+}
+
+export async function fetchUsosFertilizante(id) {
+  const json = await request(`/fertilizantes/${id}/usos`);
+  return json.data;
+}
+
+// --- Nuevas funciones PL/SQL conectadas ---
+
+// sp_sincronizar_stock
+export async function sincronizarStock() {
+  const json = await request('/fertilizantes/sincronizar-stock', { method: 'POST' });
+  return json.data;
+}
+
+// fn_fertilizante_mas_consumido
+export async function fetchFertilizanteMasConsumido(desde, hasta) {
+  const params = new URLSearchParams();
+  if (desde) params.append('desde', desde);
+  if (hasta) params.append('hasta', hasta);
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const json = await request(`/fertilizantes/mas-consumido${query}`);
+  return json.data;
+}
+
+// sp_cerrar_campana
+export async function cerrarCampana(id) {
+  const json = await request(`/campanas/${id}/cerrar`, { method: 'POST' });
+  return json.data;
+}
+
+// fn_rendimiento_campana
+export async function fetchRendimientoCampana(id) {
+  const json = await request(`/campanas/${id}/rendimiento`);
+  return json.data;
+}
+
+// sp_liquidar_nomina
+export async function liquidarNomina(mes, anio) {
+  const json = await request('/trabajadores/nomina/liquidar', {
+    method: 'POST',
+    body: JSON.stringify({ mes, anio }),
+  });
+  return json; // { data: [...], mes, anio }
+}
+
+// fn_costo_nomina_mes
+export async function fetchCostoNominaMes(mes, anio) {
+  const params = new URLSearchParams();
+  if (mes)  params.append('mes',  mes);
+  if (anio) params.append('anio', anio);
+  const json = await request(`/trabajadores/nomina/costo?${params.toString()}`);
+  return json.data;
+}
+
+// fn_balance_periodo
+export async function fetchBalancePeriodo(desde, hasta) {
+  const params = new URLSearchParams();
+  if (desde) params.append('desde', desde);
+  if (hasta) params.append('hasta', hasta);
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const json = await request(`/finanzas/balance${query}`);
+  return json.data;
+}
+
+// sp_registrar_inversiones
+export async function registrarInversiones(siembraId, items) {
+  const json = await request('/finanzas/inversiones', {
+    method: 'POST',
+    body: JSON.stringify({ siembra_id: siembraId, items }),
+  });
+  return json.data;
+}
+
+// fn_parcelas_riego_vencido
+export async function fetchParcelasRiegoVencido(dias = 7) {
+  const json = await request(`/riego/vencido?dias=${dias}`);
+  return json.data;
+}
+
+// --- V_DASHBOARD y V_RESUMEN_FINANCIERO ---
+
+export async function fetchDashboardStats() {
+  const json = await request('/dashboard');
+  return json.data;
+}
+
+export async function fetchResumenFinanciero() {
+  const json = await request('/dashboard/financiero');
+  return json.data;
+}
+
+// --- V_SIEMBRAS_RESUMEN ---
+
+export async function fetchSiembras() {
+  const json = await request('/siembras');
+  return json.data;
+}
+
+// --- V_TRABAJADORES_HORAS ---
+
+export async function fetchTrabajadoresConHoras() {
+  const json = await request('/trabajadores/con-horas');
+  return json.data;
+}
+
+// fn_horas_trabajador
+export async function fetchHorasTrabajador(id, desde, hasta) {
+  const params = new URLSearchParams();
+  if (desde) params.append('desde', desde);
+  if (hasta) params.append('hasta', hasta);
+  const json = await request(`/trabajadores/${id}/horas?${params.toString()}`);
+  return json.data;
+}
+
+// sp_registrar_jornadas
+export async function registrarJornadas(trabajadorId, lista) {
+  const json = await request(`/trabajadores/${trabajadorId}/jornadas`, {
+    method: 'POST',
+    body: JSON.stringify({ lista }),
+  });
+  return json.data;
+}

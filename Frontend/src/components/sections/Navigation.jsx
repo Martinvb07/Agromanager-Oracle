@@ -1,20 +1,21 @@
 import {
   Sprout, Droplets, Bug, MapPin, Leaf, Users, DollarSign,
-  Truck, FileText, TrendingUp, CalendarRange, LogOut, X, User,
+  Truck, FileText, TrendingUp, CalendarRange, LogOut, X, User, Wheat,
 } from 'lucide-react';
 
 const sections = [
-  { id: 'dashboard',     name: 'Dashboard',     icon: TrendingUp  },
-  { id: 'parcelas',      name: 'Parcelas',       icon: MapPin      },
-  { id: 'trabajadores',  name: 'Personal',       icon: Users       },
-  { id: 'finanzas',      name: 'Finanzas',       icon: DollarSign  },
-  { id: 'maquinaria',    name: 'Maquinaria',     icon: Truck       },
+  { id: 'dashboard',     name: 'Dashboard',     icon: TrendingUp   },
+  { id: 'parcelas',      name: 'Parcelas',       icon: MapPin       },
+  { id: 'trabajadores',  name: 'Personal',       icon: Users        },
+  { id: 'finanzas',      name: 'Finanzas',       icon: DollarSign   },
+  { id: 'maquinaria',    name: 'Maquinaria',     icon: Truck        },
   { id: 'campanas',      name: 'Campañas',       icon: CalendarRange },
-  { id: 'semillas',      name: 'Semillas',       icon: Sprout      },
-  { id: 'plagas',        name: 'Plagas',         icon: Bug         },
-  { id: 'riego',         name: 'Riego',          icon: Droplets    },
-  { id: 'fertilizantes', name: 'Fertilizantes',  icon: Leaf        },
-  { id: 'reportes',      name: 'Reportes',       icon: FileText    },
+  { id: 'siembras',      name: 'Siembras',       icon: Wheat        },
+  { id: 'semillas',      name: 'Semillas',       icon: Sprout       },
+  { id: 'plagas',        name: 'Plagas',         icon: Bug          },
+  { id: 'riego',         name: 'Riego',          icon: Droplets     },
+  { id: 'fertilizantes', name: 'Fertilizantes',  icon: Leaf         },
+  { id: 'reportes',      name: 'Reportes',       icon: FileText     },
 ];
 
 const Sidebar = ({ activeSection, setActiveSection, currentUser, onLogout, onShowProfile, isOpen, onClose }) => (

@@ -90,6 +90,22 @@ export const campanasController = {
     res.status(200).json({ data: updated });
   },
 
+  async cerrarCampana(req, res) {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const data = await campanasService.cerrarCampana(userId, id);
+    if (!data) return res.status(404).json({ error: 'Campaña no encontrada' });
+    res.status(200).json({ data, message: 'Campaña cerrada correctamente' });
+  },
+
+  async rendimientoCampana(req, res) {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const data = await campanasService.rendimientoCampana(userId, id);
+    if (!data) return res.status(404).json({ error: 'Campaña no encontrada' });
+    res.status(200).json({ data });
+  },
+
   async removeRemision(req, res) {
     const userId = req.user.id;
     const { id, remisionId } = req.params;

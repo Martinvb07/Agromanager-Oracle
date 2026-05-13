@@ -5,9 +5,11 @@ import { fertilizantesController } from '../controllers/fertilizantes.controller
 
 const router = Router();
 
-router.get('/',              requireAuth, asyncHandler(fertilizantesController.list));
-router.get('/stock-bajo',   requireAuth, asyncHandler(fertilizantesController.stockBajo));
-router.post('/aplicar-lote',requireAuth, asyncHandler(fertilizantesController.aplicarLote));
+router.get('/',                  requireAuth, asyncHandler(fertilizantesController.list));
+router.get('/stock-bajo',        requireAuth, asyncHandler(fertilizantesController.stockBajo));
+router.get('/mas-consumido',     requireAuth, asyncHandler(fertilizantesController.masFertilizanteConsumido));
+router.post('/aplicar-lote',     requireAuth, asyncHandler(fertilizantesController.aplicarLote));
+router.post('/sincronizar-stock',requireAuth, asyncHandler(fertilizantesController.sincronizarStock));
 router.post('/',            requireAuth, asyncHandler(fertilizantesController.create));
 router.get('/:id/usos',    requireAuth, asyncHandler(fertilizantesController.listarUsos));
 router.post('/:id/usar',   requireAuth, asyncHandler(fertilizantesController.registrarUso));

@@ -28,8 +28,16 @@ const FROM_JOIN = `
 export const maquinariaService = {
   async list(userId) {
     const result = await query(
-      `SELECT ${SELECT_FIELDS} ${FROM_JOIN}
-        WHERE m.usuario_id = :userId ORDER BY m.id DESC`,
+      `SELECT id                    AS "id",
+              nombre                AS "nombre",
+              tipo                  AS "tipo",
+              estado                AS "estado",
+              ultimo_mantenimiento  AS "ultimoMantenimiento",
+              proximo_mantenimiento AS "proximoMantenimiento",
+              operadores_activos    AS "operadoresActivos"
+         FROM V_MAQUINARIA_DETALLE
+        WHERE usuario_id = :userId
+        ORDER BY id DESC`,
       { userId }
     );
     return result.rows;

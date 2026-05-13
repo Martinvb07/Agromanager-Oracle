@@ -28,4 +28,11 @@ export const riegoController = {
     if (!removed) return res.status(404).json({ error: 'Programación de riego no encontrada' });
     res.status(204).send();
   },
+
+  async parcelasRiegoVencido(req, res) {
+    const userId = req.user.id;
+    const diasLimite = Number(req.query.dias ?? 7);
+    const data = await riegoService.parcelasRiegoVencido(userId, diasLimite);
+    res.status(200).json({ data });
+  },
 };
