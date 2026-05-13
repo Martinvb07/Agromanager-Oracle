@@ -1,517 +1,296 @@
-# Manual de Usuario — AgroManager
-**Sistema Integral de Gestión Agrícola**
+# Guía de Uso — AgroManager Pro
+### Tu campo, organizado desde el celular o el computador
 
 ---
 
-## Tabla de Contenidos
-
-1. [Introducción](#1-introducción)
-2. [Requisitos para usar el sistema](#2-requisitos-para-usar-el-sistema)
-3. [Inicio de sesión](#3-inicio-de-sesión)
-4. [Navegación general](#4-navegación-general)
-5. [Dashboard — Panel de Control](#5-dashboard--panel-de-control)
-6. [Módulo: Parcelas](#6-módulo-parcelas)
-7. [Módulo: Personal](#7-módulo-personal)
-8. [Módulo: Finanzas](#8-módulo-finanzas)
-9. [Módulo: Maquinaria](#9-módulo-maquinaria)
-10. [Módulo: Campañas Agrícolas](#10-módulo-campañas-agrícolas)
-11. [Módulo: Semillas](#11-módulo-semillas)
-12. [Módulo: Plagas](#12-módulo-plagas)
-13. [Módulo: Riego](#13-módulo-riego)
-14. [Módulo: Fertilizantes](#14-módulo-fertilizantes)
-15. [Módulo: Reportes](#15-módulo-reportes)
-16. [Perfil de usuario y cierre de sesión](#16-perfil-de-usuario-y-cierre-de-sesión)
-17. [Preguntas frecuentes](#17-preguntas-frecuentes)
+> **¿Primera vez usando AgroManager?**
+> No te preocupes. Esta guía te explica todo paso a paso, sin tecnicismos.
+> Si en algún momento te perdés, podés preguntarle directamente al **Asistente AgroBot** dentro del sistema.
 
 ---
 
-## 1. Introducción
+## ¿Qué puedo hacer con AgroManager?
 
-**AgroManager** es un sistema de gestión agrícola diseñado para centralizar y digitalizar la administración de una explotación agrícola. Permite controlar en tiempo real:
+AgroManager es tu cuaderno de campo digital. Todo lo que antes anotabas en papel o en hojas de cálculo, ahora lo tenés organizado en un solo lugar, disponible desde cualquier dispositivo con internet.
 
-- Parcelas y cultivos activos
-- Personal y liquidaciones de nómina
-- Ingresos y egresos financieros
-- Maquinaria y mantenimientos
-- Campañas agrícolas con diario de cosecha y remisiones
-- Inventario de semillas
-- Control de plagas
-- Programación de riego
-- Aplicaciones de fertilizantes
-
-Toda la información se guarda de forma segura en **Oracle Cloud Database**, lo que garantiza disponibilidad y respaldo de los datos.
-
----
-
-## 2. Requisitos para usar el sistema
-
-| Elemento | Requisito |
+| Lo que hacías antes | Lo que hacés ahora |
 |---|---|
-| Navegador | Google Chrome, Firefox, Edge o Safari (versión reciente) |
-| Conexión a internet | Requerida para sincronizar con la base de datos |
-| Dispositivo | Computador de escritorio, portátil, tablet o celular |
-| Credenciales | Usuario y contraseña proporcionados por el administrador |
-
-> **Nota:** El sistema es completamente responsivo. Funciona tanto en computador como en celular.
-
----
-
-## 3. Inicio de sesión
-
-1. Abra su navegador y escriba la dirección del sistema (ejemplo: `http://localhost:5173` en entorno local, o la URL de producción que le hayan dado).
-2. Aparecerá la pantalla de **inicio de sesión**.
-3. Ingrese su **correo electrónico** y su **contraseña**.
-4. Haga clic en el botón **Ingresar**.
-
-![Pantalla de login](docs/login-placeholder.png)
-
-> Si no recuerda su contraseña, contacte al administrador del sistema.
-
-**Credenciales de ejemplo (entorno de prueba):**
-
-| Campo | Valor |
-|---|---|
-| Correo | admin@agromanager.com |
-| Contraseña | Proporcionada por el administrador |
+| Anotar en un cuaderno quién trabajó y cuántas horas | Registrarlo en segundos y calcular la nómina automáticamente |
+| Guardar facturas en una carpeta | Registrar ingresos y egresos y ver el balance al instante |
+| Recordar de memoria cuándo fue el último mantenimiento | El sistema te avisa cuando se acerca la fecha |
+| Hacer remisiones a mano | Generarlas con firma digital y descargarlas en PDF |
+| No saber cuánto produjo la cosecha | Ver el rendimiento por hectárea en tiempo real |
 
 ---
 
-## 4. Navegación general
+## Antes de empezar
 
-Al ingresar al sistema verá la interfaz principal dividida en dos áreas:
+Solo necesitás:
+- Un celular, tablet o computador con internet
+- El correo y la contraseña que te dio el administrador
+
+**¿Dónde entro?**
+Abrí tu navegador (Chrome, Firefox, Safari o Edge) y escribí la dirección que te dieron. Se ve así:
 
 ```
-┌─────────────────┬──────────────────────────────────────┐
-│   MENÚ LATERAL  │                                      │
-│                 │         CONTENIDO PRINCIPAL          │
-│  🌱 AgroManager │                                      │
-│                 │                                      │
-│  📊 Dashboard   │                                      │
-│  📍 Parcelas    │                                      │
-│  👥 Personal    │                                      │
-│  💰 Finanzas    │                                      │
-│  🚛 Maquinaria  │                                      │
-│  📅 Campañas    │                                      │
-│  🌱 Semillas    │                                      │
-│  🐛 Plagas      │                                      │
-│  💧 Riego       │                                      │
-│  🍃 Fertiliz.   │                                      │
-│  📄 Reportes    │                                      │
-│                 │                                      │
-│  👤 Usuario     │                                      │
-│  Cerrar sesión  │                                      │
-└─────────────────┴──────────────────────────────────────┘
+https://oracle.agromanager.pro
 ```
 
-### En computador (escritorio)
-- El **menú lateral** está siempre visible a la izquierda.
-- Haga clic en cualquier opción del menú para cambiar de módulo.
-- La opción activa aparece resaltada en color morado.
+---
 
-### En celular o tablet
-- El menú lateral se oculta automáticamente.
-- Aparece una **barra superior** con el botón ☰ (tres líneas) en la esquina superior izquierda.
-- Toque ☰ para abrir el menú lateral como un panel deslizante.
-- Toque cualquier opción del menú para navegar. El panel se cerrará automáticamente.
-- Toque fuera del menú (zona oscurecida) para cerrarlo sin navegar.
+## Cómo entrar al sistema
+
+1. Escribí tu **correo electrónico**
+2. Escribí tu **contraseña**
+3. Tocá el botón **Ingresar**
+
+Listo. El sistema te lleva directo al panel principal.
+
+> Si olvidaste tu contraseña, avisale al administrador para que te la resetee.
 
 ---
 
-## 5. Dashboard — Panel de Control
+## El panel principal (Dashboard)
 
-El Dashboard es la pantalla de inicio. Muestra un resumen rápido del estado actual de la finca.
+Cuando entrás, lo primero que ves es el **resumen de tu finca**. De un vistazo sabés:
 
-### Tarjetas de estadísticas
+- Cuántas parcelas están activas
+- Cuántos trabajadores tenés registrados
+- Cuánto entraste y gastaste este mes
+- Cuántas campañas están en curso
+- Si hay alguna alerta importante (plagas detectadas, riego vencido, maquinaria en mantenimiento)
 
-| Tarjeta | Qué muestra |
+También tenés el resumen financiero mes a mes para ver cómo va el negocio.
+
+---
+
+## Cómo moverse por el sistema
+
+**En computador:** el menú está siempre a la izquierda. Hacé clic en cualquier opción para ir a ese módulo.
+
+**En celular:** tocá las tres líneas ☰ en la parte superior izquierda para abrir el menú. Tocá la sección que querés y el menú se cierra solo.
+
+---
+
+## Parcelas
+
+Acá registrás cada lote o parcela de tu campo.
+
+**Para agregar una parcela:**
+1. Tocá **+ Nueva Parcela**
+2. Ponele un nombre (ej: *Lote Norte*, *Parcela 3*)
+3. Indicá cuántas hectáreas tiene
+4. Seleccioná qué cultivo tiene y en qué estado está
+5. Guardá
+
+Podés ver todas tus parcelas de un vistazo, editar cualquier dato o eliminar las que ya no uses.
+
+**Estados de una parcela:**
+- **Activa** → tiene cultivo en este momento
+- **En preparación** → está siendo preparada para sembrar
+- **Inactiva** → sin actividad por el momento
+
+---
+
+## Personal
+
+Llevá el registro de todos los trabajadores de la finca.
+
+**Para agregar un trabajador:**
+1. Tocá **+ Agregar Trabajador**
+2. Poné su nombre, cargo y salario mensual
+3. Guardá
+
+**Para registrar las horas trabajadas:**
+1. En la fila del trabajador, tocá **+ Jornadas**
+2. Agregá la fecha, cuántas horas trabajó y una descripción si querés
+3. Podés agregar varias jornadas a la vez
+4. Tocá **Guardar Jornadas**
+
+**Para liquidar la nómina del mes:**
+- Tocá el botón **Liquidar Nómina del Mes**
+- El sistema calcula automáticamente el pago de cada trabajador según las horas registradas
+- Los egresos de nómina quedan registrados solos en Finanzas
+
+---
+
+## Finanzas
+
+Todo lo que entra y sale de la finca queda registrado acá.
+
+**Para registrar un ingreso** (una venta, un cobro):
+1. En la sección Ingresos, tocá **+ Registrar**
+2. Describí de qué es (ej: *Venta cosecha arroz*), el monto y la fecha
+3. Guardá
+
+**Para registrar un egreso** (una compra, un pago):
+1. En la sección Egresos, tocá **+ Registrar**
+2. Describí el gasto, el monto, la fecha y el tipo (insumos, personal, mantenimiento, etc.)
+3. Guardá
+
+**Balance por período:**
+¿Querés saber cuánto ganaste entre dos fechas específicas? Usá el panel **Balance por Período**, elegí las fechas y tocá **Consultar**. El sistema te muestra el resultado al instante con un indicador verde si ganaste o rojo si gastaste más de lo que entraste.
+
+---
+
+## Maquinaria
+
+Controlá el estado de todos los equipos: tractores, cosechadoras, bombas, etc.
+
+**Para registrar un equipo:**
+1. Tocá **+ Registrar Maquinaria**
+2. Poné el nombre, tipo y estado actual
+3. Ingresá las fechas de último y próximo mantenimiento
+4. Guardá
+
+Cada equipo muestra cuántos operadores tiene asignados actualmente.
+
+**Estados:**
+- **Operativo** → funcionando bien
+- **En mantenimiento** → en revisión o reparación
+- **Fuera de servicio** → sin funcionar
+
+> El Dashboard te avisa automáticamente si algún equipo está en mantenimiento.
+
+---
+
+## Campañas
+
+Las campañas son el corazón del sistema. Acá seguís cada ciclo de cosecha de principio a fin.
+
+**Para crear una campaña:**
+1. Tocá **+ Nueva Campaña**
+2. Poné el nombre, las fechas de inicio y fin, las hectáreas y los lotes
+3. Guardá
+
+**Para ver el detalle de una campaña:**
+Tocá **Ver** en la fila de la campaña. Ahí podés:
+
+### Diario de cosecha
+Registrá día a día cuántas hectáreas se cortaron y cuántos bultos se cosecharon. El sistema calcula automáticamente el rendimiento por hectárea.
+
+### Remisiones
+Generá los documentos de despacho cuando salga producción de la finca:
+1. Completá los datos del conductor, el vehículo, el origen, el destino, la cantidad y el valor del flete
+2. En los campos de **Firma conductor** y **Firma propietario**, tocá **Tocar para firmar** y dibujá la firma con el dedo o el mouse
+3. Tocá **Guardar Firma**
+4. Una vez lista, tocá el botón **PDF** en la tabla de remisiones para descargar el documento firmado
+
+**Para cerrar una campaña:**
+Cuando la cosecha terminó, tocá el botón **Cerrar** en la tabla de campañas. El sistema marca automáticamente las parcelas como inactivas.
+
+---
+
+## Semillas
+
+Llevá el inventario de semillas disponibles en la finca.
+
+1. Tocá **+ Agregar Semilla**
+2. Indicá el tipo, la cantidad, el costo y el proveedor
+3. Guardá
+
+---
+
+## Plagas
+
+Registrá cualquier plaga que detectes en tus cultivos para tener trazabilidad.
+
+1. Tocá **+ Registrar Plaga**
+2. Indicá el cultivo afectado, el tipo de plaga, la severidad (Baja / Media / Alta) y el tratamiento aplicado
+3. Guardá
+
+> Las plagas con severidad **Alta** generan una alerta automática visible en el Dashboard.
+
+---
+
+## Riego
+
+Organizá los turnos de riego y llevá el historial de consumo de agua.
+
+1. Tocá **+ Programar Riego**
+2. Elegí el tipo de riego (goteo, aspersión, gravedad, inundación)
+3. Ingresá el consumo de agua y las fechas de último y próximo riego
+4. Guardá
+
+> Si una parcela lleva más de 7 días sin riego, el sistema te muestra una alerta en naranja.
+
+---
+
+## Fertilizantes
+
+Controlá el stock de fertilizantes y registrá cada aplicación.
+
+**Ver el stock:**
+La tabla muestra cada fertilizante con su stock actual en kg. Si alguno está por debajo del mínimo, aparece una alerta en rojo.
+
+**Registrar uso individual:**
+Tocá **Editar** en el fertilizante y ajustá el stock, o usá el botón **Aplicar en Lote** para aplicar varios fertilizantes a una parcela en una sola operación.
+
+**Sincronizar stock:**
+Si notás que los estados no cuadran, tocá **Sincronizar Stock** y el sistema los corrige automáticamente.
+
+---
+
+## Reportes
+
+Generá reportes en PDF con información real de tu finca con un solo toque.
+
+| Reporte | Qué incluye |
 |---|---|
-| **Parcelas Activas** | Número de parcelas en estado "Activa" |
-| **Trabajadores** | Total de trabajadores registrados |
-| **Ingresos (mes)** | Suma de ingresos del mes actual |
-| **Egresos (mes)** | Suma de egresos del mes actual |
-| **Maquinarias** | Equipos en estado "Operativo" |
+| **Financiero** | Ingresos, egresos, balance por mes |
+| **Producción** | Campañas, rendimiento por hectárea, producción total |
+| **Nómina** | Trabajadores, horas del mes, salarios, costo total |
+| **Maquinaria** | Estado de equipos, fechas de mantenimiento |
+| **Fitosanitario** | Plagas detectadas, severidad y tratamientos |
+| **Riego** | Programaciones, consumo de agua, parcelas con riego vencido |
 
-### Últimas Transacciones
-Lista los ingresos y egresos más recientes registrados en el sistema.
-
-### Alertas y Notificaciones
-Muestra avisos importantes como:
-- Maquinaria en mantenimiento pendiente
-- Plagas detectadas recientemente
-- Riegos programados próximos
-
-### Asistente IA
-En la parte inferior del Dashboard encontrará el **Asistente de IA** de AgroManager, que puede responder preguntas sobre gestión agrícola.
+Tocá **Generar Reporte** en cualquier tarjeta y en segundos se descarga el PDF en tu dispositivo.
 
 ---
 
-## 6. Módulo: Parcelas
+## AgroBot — Tu asistente agrícola
 
-Gestiona las parcelas o lotes de terreno de la finca.
+En el panel principal encontrás el **AgroBot**, un asistente que puede ayudarte con preguntas como:
 
-### Ver parcelas
-Al ingresar al módulo verá todas las parcelas registradas en forma de tarjetas, con información de:
-- Nombre de la parcela
-- Hectáreas
-- Inversión registrada
-- Cultivo actual
-- Estado (Activa / En preparación / Cosechada)
+- *"¿Cuándo debo aplicar fertilizante en maíz?"*
+- *"¿Qué tratamiento uso para el cogollero?"*
+- *"¿Cómo mejoro el rendimiento por hectárea?"*
 
-### Registrar una nueva parcela
-
-1. Haga clic en el botón **+ Nueva Parcela** (esquina superior derecha).
-2. Complete el formulario:
-
-| Campo | Descripción | Ejemplo |
-|---|---|---|
-| **Nombre** | Identificador de la parcela | Parcela Norte A |
-| **Hectáreas** | Extensión en hectáreas | 12.5 |
-| **Cultivo actual** | Qué se está cultivando | Maíz |
-| **Estado** | Estado actual del lote | Activa |
-| **Inversión inicial** | Monto invertido en COP | 5000000 |
-
-3. Haga clic en **Guardar**.
-
-### Editar una parcela
-1. En la tarjeta de la parcela, haga clic en **Editar**.
-2. Modifique los campos que necesite.
-3. Haga clic en **Guardar**.
-
-### Ver detalles de una parcela
-Haga clic en **Ver detalles** para ver toda la información de la parcela en un panel emergente.
-
-### Estados de parcela
-
-| Estado | Significado |
-|---|---|
-| **Activa** | En producción o con cultivo activo |
-| **En preparación** | Lista para sembrar, sin cultivo aún |
-| **Cosechada** | Cosecha finalizada |
+Solo escribí tu pregunta y el AgroBot te responde usando el estado actual de tu finca más una base de conocimiento agrícola.
 
 ---
 
-## 7. Módulo: Personal
+## Cerrar sesión
 
-Administra los trabajadores de la finca y genera liquidaciones.
+**En computador:** en la parte inferior del menú izquierdo, tocá **Cerrar sesión**.
 
-### Ver trabajadores
-Se muestra una tabla con todos los trabajadores y sus datos principales: nombre, cargo, salario, horas trabajadas y estado.
+**En celular:** abrí el menú con ☰ y tocá **Cerrar sesión** al final.
 
-### Agregar un trabajador
-
-1. Haga clic en **+ Agregar Trabajador**.
-2. Complete el formulario:
-
-| Campo | Descripción | Ejemplo |
-|---|---|---|
-| **Nombre** | Nombre completo | Juan Pérez |
-| **Cargo** | Rol en la finca | Operario |
-| **Salario mensual** | Salario base en COP | 1500000 |
-| **Horas trabajadas** | Horas del período | 160 |
-| **Estado** | Activo / Inactivo | Activo |
-
-3. Haga clic en **Guardar**.
-
-### Editar un trabajador
-1. En la fila del trabajador, haga clic en **Editar**.
-2. Modifique los datos y haga clic en **Guardar**.
-
-### Eliminar un trabajador
-1. Haga clic en **Eliminar** en la fila del trabajador.
-2. Confirme la acción en el diálogo que aparece.
-
-### Calcular liquidación
-
-1. Haga clic en **Liquidar** en la fila del trabajador.
-2. El sistema calculará automáticamente:
-   - Salario bruto
-   - Horas extras (si trabajó más de 160 horas)
-   - Deducciones (12% del salario bruto)
-   - **Salario neto a pagar**
-3. Puede hacer clic en **Registrar en egresos** para guardar automáticamente la liquidación como un egreso en el módulo de Finanzas.
+El sistema te pide confirmación antes de salir.
 
 ---
 
-## 8. Módulo: Finanzas
+## Preguntas frecuentes
 
-Registra y consulta todos los movimientos financieros de la finca.
+**¿Puedo usarlo desde el celular?**
+Sí, funciona perfecto en celular, tablet y computador.
 
-### Resumen financiero
-En la parte superior se muestran tres totales:
-- **Total Ingresos** acumulados
-- **Total Egresos** acumulados
-- **Balance** (Ingresos − Egresos)
+**¿Los datos se pierden si cierro el navegador?**
+No. Todo queda guardado en la nube de Oracle automáticamente cuando tocás **Guardar** en cualquier formulario.
 
-### Registrar un ingreso
+**¿Qué pasa si ingresé un dato mal?**
+Podés editarlo en cualquier momento. Ningún registro es permanente hasta que vos lo eliminés conscientemente, y el sistema siempre pide confirmación antes de borrar.
 
-1. En la sección **Ingresos**, haga clic en **+ Nuevo Ingreso**.
-2. Complete el formulario:
+**¿Quién puede crear más usuarios?**
+Solo el usuario **Owner** (el dueño de la cuenta) puede crear y administrar otros usuarios desde su panel de administración.
 
-| Campo | Descripción | Ejemplo |
-|---|---|---|
-| **Concepto** | Descripción del ingreso | Venta cosecha maíz |
-| **Monto** | Valor en COP | 5000000 |
-| **Fecha** | Fecha del ingreso | 2026-05-06 |
-| **Tipo** | Clasificación | Venta |
+**¿Puedo ver cuánto gané en un mes específico?**
+Sí. En el módulo **Finanzas**, usá el panel **Balance por Período**, elegí las fechas y tocá **Consultar**.
 
-3. Haga clic en **Guardar**.
-
-### Registrar un egreso
-
-1. En la sección **Egresos**, haga clic en **+ Nuevo Egreso**.
-2. Complete el formulario:
-
-| Campo | Descripción | Ejemplo |
-|---|---|---|
-| **Concepto** | Descripción del gasto | Compra fertilizante |
-| **Monto** | Valor en COP | 800000 |
-| **Fecha** | Fecha del egreso | 2026-05-06 |
-| **Tipo** | Clasificación | Insumos |
-| **Categoría** | Subcategoría | Fertilizantes |
-
-3. Haga clic en **Guardar**.
-
-> **Consejo:** Los egresos de liquidaciones de personal se registran automáticamente desde el módulo de Personal al hacer clic en "Registrar en egresos".
+**¿Qué hago si la página muestra un error?**
+Recargá el navegador. Si el error persiste, cerrá sesión, volvé a entrar e intentá de nuevo. Si continúa, avisale al administrador del sistema.
 
 ---
 
-## 9. Módulo: Maquinaria
-
-Controla el inventario de maquinaria y el estado de mantenimientos.
-
-### Registrar un equipo
-
-1. Haga clic en **+ Registrar Maquinaria**.
-2. Complete el formulario:
-
-| Campo | Descripción | Ejemplo |
-|---|---|---|
-| **Nombre** | Nombre del equipo | Tractor Kubota M7151 |
-| **Tipo** | Categoría del equipo | Tractor |
-| **Estado** | Estado actual | Operativo |
-| **Último mantenimiento** | Fecha del último servicio | 2026-01-15 |
-| **Próximo mantenimiento** | Fecha del siguiente servicio | 2026-07-15 |
-
-3. Haga clic en **Guardar**.
-
-### Estados de maquinaria
-
-| Estado | Significado |
-|---|---|
-| **Operativo** | Funcionando correctamente |
-| **Mantenimiento** | En revisión o servicio técnico |
-| **Fuera de servicio** | Dañado o inactivo indefinidamente |
-
-> **Consejo:** El Dashboard mostrará una alerta cuando algún equipo esté en estado "Mantenimiento".
-
-### Editar o eliminar
-Use los botones **Editar** y **Eliminar** dentro de cada tarjeta de maquinaria.
-
----
-
-## 10. Módulo: Campañas Agrícolas
-
-Las campañas permiten registrar y hacer seguimiento completo de cada ciclo de producción.
-
-### Crear una campaña
-
-1. Haga clic en **+ Nueva Campaña**.
-2. Complete los datos:
-
-| Campo | Descripción |
-|---|---|
-| **Nombre** | Identificador de la campaña |
-| **Fecha de inicio** | Inicio del ciclo productivo |
-| **Fecha de fin** | Finalización estimada |
-| **Hectáreas** | Área total involucrada |
-| **Lotes** | Número de lotes |
-| **Inversión total** | Inversión proyectada en COP |
-| **Gastos operativos** | Costos operativos en COP |
-| **Ingreso total** | Ingresos esperados o reales |
-| **Rendimiento por ha** | Toneladas por hectárea |
-| **Producción total** | Producción total en toneladas |
-
-3. Haga clic en **Guardar**.
-
-### Diario de cosecha y remisiones
-Al hacer clic en **Ver / Editar** dentro de una campaña, accederá a la vista detallada donde puede:
-
-- Registrar el **diario de cosecha** diario (hectáreas cortadas, bultos)
-- Generar **remisiones de transporte** con datos del conductor, vehículo, origen, destino y firma digital
-
----
-
-## 11. Módulo: Semillas
-
-Administra el inventario de semillas disponibles en la finca.
-
-### Agregar semillas
-
-1. Haga clic en **+ Agregar Semilla**.
-2. Complete el formulario:
-
-| Campo | Descripción | Ejemplo |
-|---|---|---|
-| **Tipo de semilla** | Variedad o nombre comercial | Maíz Híbrido DK7088 |
-| **Cantidad** | Cantidad disponible (kg, unidades) | 500 |
-| **Costo** | Valor pagado en COP | 350000 |
-| **Proveedor** | Casa comercial proveedora | AgroSemillas SA |
-
-3. Haga clic en **Guardar**.
-
-### Editar o eliminar
-Use los botones **Editar** y **Eliminar** en la fila correspondiente.
-
----
-
-## 12. Módulo: Plagas
-
-Registra y hace seguimiento a las plagas detectadas en los cultivos.
-
-### Registrar una plaga
-
-1. Haga clic en **+ Registrar Plaga**.
-2. Complete el formulario:
-
-| Campo | Descripción | Ejemplo |
-|---|---|---|
-| **Cultivo afectado** | Cultivo donde se detectó | Maíz |
-| **Tipo de plaga** | Nombre de la plaga | Cogollero |
-| **Severidad** | Nivel de afectación | Medio |
-| **Fecha detección** | Cuándo se detectó | 2026-05-06 |
-| **Tratamiento** | Medida de control aplicada | Clorpirifos 2L/ha |
-
-3. Haga clic en **Guardar**.
-
-### Niveles de severidad
-
-| Nivel | Descripción |
-|---|---|
-| **Bajo** | Presencia mínima, vigilancia preventiva |
-| **Medio** | Afectación moderada, tratamiento recomendado |
-| **Alto** | Afectación grave, acción inmediata requerida |
-
-> **Consejo:** Las plagas activas aparecerán como alertas en el Dashboard.
-
----
-
-## 13. Módulo: Riego
-
-Programa y registra los eventos de riego de la finca.
-
-### Programar un riego
-
-1. Haga clic en **+ Programar Riego**.
-2. Complete el formulario:
-
-| Campo | Descripción | Ejemplo |
-|---|---|---|
-| **Tipo de riego** | Sistema utilizado | Goteo / Aspersión |
-| **Consumo de agua** | Volumen aproximado | 25000 L |
-| **Último riego** | Fecha del riego anterior | 2026-05-01 |
-| **Próximo riego** | Fecha programada del siguiente | 2026-05-08 |
-
-3. Haga clic en **Guardar**.
-
-> **Consejo:** El Dashboard mostrará una alerta cuando haya un riego programado próximo.
-
-### Editar o eliminar
-Use los botones **Editar** y **Eliminar** en la fila correspondiente.
-
----
-
-## 14. Módulo: Fertilizantes
-
-Lleva el control de las aplicaciones de fertilizantes realizadas.
-
-### Registrar una aplicación
-
-1. Haga clic en **+ Nueva Aplicación**.
-2. Complete el formulario:
-
-| Campo | Descripción | Ejemplo |
-|---|---|---|
-| **Parcela** | Dónde se aplicó | Parcela Norte A |
-| **Fertilizante** | Producto aplicado | NPK 15-15-15 |
-| **Dosis** | Cantidad aplicada | 2000 kg |
-| **Fecha de aplicación** | Cuándo se realizó | 2026-05-06 |
-| **Estado** | Estado de la aplicación | Aplicado |
-
-3. Haga clic en **Guardar**.
-
-### Estados de aplicación
-
-| Estado | Significado |
-|---|---|
-| **Aplicado** | Ya se realizó la aplicación |
-| **Programado** | Está pendiente de realizar |
-| **Cancelado** | Se canceló la aplicación |
-
-### Editar o eliminar
-Use los botones **Editar** y **Eliminar** en la fila correspondiente.
-
----
-
-## 15. Módulo: Reportes
-
-El módulo de Reportes está diseñado para generar documentos y resúmenes exportables del estado de la finca.
-
-> **Nota:** Este módulo se encuentra en desarrollo activo. Las funcionalidades de exportación estarán disponibles en próximas versiones.
-
----
-
-## 16. Perfil de usuario y cierre de sesión
-
-### Ver información de perfil
-
-**En computador:**
-- En la parte inferior del menú lateral, haga clic sobre su nombre de usuario.
-- Se abrirá un panel con su nombre, correo electrónico y rol.
-
-**En celular:**
-- Toque el ícono ⚙️ en la barra superior derecha.
-- Se abrirá el panel de información de usuario.
-
-### Cerrar sesión
-
-**En computador:**
-- En la parte inferior del menú lateral, haga clic en **Cerrar sesión**.
-
-**En celular:**
-- Abra el menú lateral tocando ☰.
-- En la parte inferior, haga clic en **Cerrar sesión**.
-
-El sistema le pedirá confirmación antes de cerrar la sesión.
-
----
-
-## 17. Preguntas frecuentes
-
-**¿Qué pasa si ingreso datos incorrectos?**
-Puede editar cualquier registro en cualquier momento usando el botón **Editar** correspondiente.
-
-**¿Los datos se guardan automáticamente?**
-No. Debe hacer clic en el botón **Guardar** dentro de cada formulario para que los datos queden guardados en la base de datos.
-
-**¿Puedo usar el sistema desde el celular?**
-Sí. El sistema está diseñado para funcionar en dispositivos móviles. Use el botón ☰ para abrir el menú de navegación.
-
-**¿Qué significa el error "Error 401"?**
-Significa que su sesión expiró. Cierre el navegador y vuelva a iniciar sesión.
-
-**¿Puedo eliminar un registro por error?**
-Los registros eliminados no se pueden recuperar directamente. Antes de eliminar, el sistema siempre pide confirmación. Si eliminó algo por error, deberá registrarlo nuevamente.
-
-**¿Quién puede crear nuevos usuarios?**
-Solo el usuario con rol **Owner** (propietario) puede crear, editar y desactivar cuentas de usuario desde el panel de administración.
-
-**¿Dónde veo el total de dinero de la finca?**
-En el módulo **Finanzas**, en la parte superior aparecen los totales de ingresos, egresos y el balance general.
-
-**¿Cómo sé qué maquinaria necesita mantenimiento?**
-El **Dashboard** muestra una alerta automática si hay maquinaria en estado "Mantenimiento". También puede verificarlo directamente en el módulo **Maquinaria**.
-
----
-
-*AgroManager — Sistema Integral de Gestión Agrícola*
-*Versión 0.2.0 — Mayo 2026*
+*AgroManager Pro — Sistema de Gestión Agrícola*
+*Versión 2.0 — Mayo 2026*

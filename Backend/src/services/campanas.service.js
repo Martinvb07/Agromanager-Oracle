@@ -27,17 +27,19 @@ const DIARIO_FIELDS = `
   notas               AS "notas"
 `;
 
+// Nuevo schema: conductores → personas (nombre, cc, tel)
+//               remisiones  → origen_id / destino_id FK a ubicaciones
 const REMISION_FIELDS = `
   r.id                AS "id",
   r.fecha             AS "fecha",
-  c.nombre            AS "nombreConductor",
-  c.cc                AS "ccConductor",
+  p.nombre            AS "nombreConductor",
+  p.cc                AS "ccConductor",
+  p.tel               AS "telefonoConductor",
   r.vehiculo_placa    AS "vehiculoPlaca",
-  r.origen            AS "origen",
-  r.destino           AS "destino",
+  uo.nombre           AS "origen",
+  ud.nombre           AS "destino",
   r.cantidad          AS "cantidad",
   r.variedad          AS "variedad",
-  c.tel               AS "telefonoConductor",
   r.tel_propietario   AS "telefonoPropietario",
   r.enviado_por_id    AS "enviadoPorId",
   u.nombre            AS "enviadoPor",
@@ -47,20 +49,54 @@ const REMISION_FIELDS = `
   r.nota              AS "nota"
 `;
 
+const REMISION_FROM = `
+  FROM remisiones r
+  LEFT JOIN conductores co ON co.id = r.conductor_id
+  LEFT JOIN personas    p  ON p.id  = co.persona_id
+  LEFT JOIN ubicaciones uo ON uo.id = r.origen_id
+  LEFT JOIN ubicaciones ud ON ud.id = r.destino_id
+  LEFT JOIN usuarios    u  ON u.id  = r.enviado_por_id
+`;
+
+// Busca o crea una persona + conductor por CC
 async function upsertConductor(cc, nombre, tel) {
   if (!cc) return null;
-  const existing = await query(`SELECT id FROM conductores WHERE cc = :cc`, { cc });
-  if (existing.rows.length > 0) {
-    const id = existing.rows[0].id;
+
+  // 1. Buscar persona por CC
+  const pRes = await query(`SELECT id AS "id" FROM personas WHERE cc = :cc`, { cc });
+  let personaId;
+
+  if (pRes.rows.length > 0) {
+    personaId = pRes.rows[0].id;
     await query(
-      `UPDATE conductores SET nombre = :nombre, tel = :tel WHERE id = :id`,
-      { nombre: nombre ?? null, tel: tel ?? null, id }
+      `UPDATE personas SET nombre = :nombre, tel = :tel WHERE id = :id`,
+      { nombre: nombre ?? null, tel: tel ?? null, id: personaId }
     );
-    return id;
+  } else {
+    personaId = await insertReturningId(
+      `INSERT INTO personas (nombre, cc, tel, tipo) VALUES (:nombre, :cc, :tel, 'Conductor') RETURNING id INTO :outId`,
+      { nombre: nombre ?? null, cc, tel: tel ?? null }
+    );
   }
+
+  // 2. Buscar o crear conductor ligado a esa persona
+  const cRes = await query(`SELECT id AS "id" FROM conductores WHERE persona_id = :personaId`, { personaId });
+  if (cRes.rows.length > 0) return cRes.rows[0].id;
+
   return insertReturningId(
-    `INSERT INTO conductores (cc, nombre, tel) VALUES (:cc, :nombre, :tel) RETURNING id INTO :outId`,
-    { cc, nombre: nombre ?? null, tel: tel ?? null }
+    `INSERT INTO conductores (persona_id) VALUES (:personaId) RETURNING id INTO :outId`,
+    { personaId }
+  );
+}
+
+// Busca o crea una ubicación por nombre
+async function upsertUbicacion(nombre) {
+  if (!nombre) return null;
+  const r = await query(`SELECT id AS "id" FROM ubicaciones WHERE nombre = :nombre`, { nombre });
+  if (r.rows.length > 0) return r.rows[0].id;
+  return insertReturningId(
+    `INSERT INTO ubicaciones (nombre, tipo) VALUES (:nombre, 'Otro') RETURNING id INTO :outId`,
+    { nombre }
   );
 }
 
@@ -250,10 +286,7 @@ export const campanasService = {
 
   async listRemisiones(userId, campanaId) {
     const result = await query(
-      `SELECT ${REMISION_FIELDS}
-         FROM remisiones r
-         LEFT JOIN conductores c ON c.id = r.conductor_id
-         LEFT JOIN usuarios u   ON u.id = r.enviado_por_id
+      `SELECT ${REMISION_FIELDS} ${REMISION_FROM}
         WHERE r.usuario_id = :userId AND r.campana_id = :campanaId
         ORDER BY r.fecha DESC, r.id DESC`,
       { userId, campanaId }
@@ -281,15 +314,17 @@ export const campanasService = {
     } = payload || {};
 
     const conductorId = await upsertConductor(ccConductor, nombreConductor, telefonoConductor);
+    const origenId    = await upsertUbicacion(origen);
+    const destinoId   = await upsertUbicacion(destino);
 
     const id = await insertReturningId(
       `INSERT INTO remisiones (
          campana_id, fecha, conductor_id, vehiculo_placa,
-         origen, destino, cantidad, variedad, tel_propietario, valor_flete,
+         origen_id, destino_id, cantidad, variedad, tel_propietario, valor_flete,
          enviado_por_id, firma_conductor, firma_propietario, nota, usuario_id)
        VALUES (
          :campanaId, :fecha, :conductorId, :vehiculoPlaca,
-         :origen, :destino, :cantidad, :variedad, :telefonoPropietario, :valorFlete,
+         :origenId, :destinoId, :cantidad, :variedad, :telefonoPropietario, :valorFlete,
          :enviadoPorId, :firmaConductor, :firmaPropietario, :nota, :userId)
        RETURNING id INTO :outId`,
       {
@@ -297,8 +332,8 @@ export const campanasService = {
         fecha: toDate(fecha),
         conductorId,
         vehiculoPlaca,
-        origen,
-        destino,
+        origenId,
+        destinoId,
         cantidad,
         variedad,
         telefonoPropietario,
@@ -330,8 +365,6 @@ export const campanasService = {
     const map = {
       fecha: 'fecha',
       vehiculoPlaca: 'vehiculo_placa',
-      origen: 'origen',
-      destino: 'destino',
       cantidad: 'cantidad',
       variedad: 'variedad',
       telefonoPropietario: 'tel_propietario',
@@ -349,6 +382,17 @@ export const campanasService = {
     if (conductorId !== undefined) {
       setParts.push('conductor_id = :conductorId');
       binds.conductorId = conductorId;
+    }
+
+    if ('origen' in changes) {
+      const origenId = await upsertUbicacion(changes.origen);
+      setParts.push('origen_id = :origenId');
+      binds.origenId = origenId;
+    }
+    if ('destino' in changes) {
+      const destinoId = await upsertUbicacion(changes.destino);
+      setParts.push('destino_id = :destinoId');
+      binds.destinoId = destinoId;
     }
 
     for (const [key, column] of Object.entries(map)) {
@@ -371,10 +415,7 @@ export const campanasService = {
 
   async getRemisionById(userId, campanaId, remisionId) {
     const result = await query(
-      `SELECT ${REMISION_FIELDS}
-         FROM remisiones r
-         LEFT JOIN conductores c ON c.id = r.conductor_id
-         LEFT JOIN usuarios u   ON u.id = r.enviado_por_id
+      `SELECT ${REMISION_FIELDS} ${REMISION_FROM}
         WHERE r.usuario_id = :userId AND r.campana_id = :campanaId AND r.id = :id`,
       { userId, campanaId, id: remisionId }
     );
