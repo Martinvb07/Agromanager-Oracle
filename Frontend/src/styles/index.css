@@ -1,4 +1,6 @@
 /* Global CSS (sin Tailwind) */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.8s linear infinite; display: inline-block; }
 :root {
   --am-bg: #f8fafc; /* slate-50 */
   --text: #1f2937; /* slate-800 */

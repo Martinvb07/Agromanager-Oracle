@@ -3,6 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Settings } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { actualizarCampana, crearCampanaDia, eliminarCampanaDia, fetchCampana, fetchCampanaDiario, actualizarCampanaDia, fetchRemisiones, crearRemision, actualizarRemision, eliminarRemision, fetchRendimientoCampana, fetchSiembras, registrarInversiones } from '../services/api.js';
+import Swal from 'sweetalert2';
+
+const toast = (icon, title) => Swal.fire({ toast: true, position: 'top-end', icon, title, showConfirmButton: false, timer: 2500, timerProgressBar: true });
+const errorAlert = (msg) => Swal.fire({ icon: 'error', title: 'Error', text: msg });
 import { campanas as mockCampanas } from '../services/mockData.js';
 
 const normalizeDateInput = (value) => {
@@ -65,6 +69,11 @@ const CampanaDetail = () => {
   const [pdfRemision, setPdfRemision] = useState(null);
   const [signatureConductorImg, setSignatureConductorImg] = useState(null);
   const [signaturePropietarioImg, setSignaturePropietarioImg] = useState(null);
+
+  // Pad de firma inline en el formulario
+  const [firmaFormModal, setFirmaFormModal] = useState(null); // 'conductor' | 'propietario' | null
+  const firmaFormCanvasRef = useRef(null);
+  const firmaFormDrawing   = useRef(false);
 
   const conductorCanvasRef = useRef(null);
   const propietarioCanvasRef = useRef(null);
@@ -276,7 +285,7 @@ const CampanaDetail = () => {
 
       const updated = await actualizarCampana(id, payload);
       setCampana(updated);
-      alert('Campaña actualizada');
+      toast('success', 'Campaña actualizada');
     } catch (e) {
       setError('No se pudo guardar la campaña');
     } finally {
@@ -462,6 +471,66 @@ const CampanaDetail = () => {
     } finally {
       setRemisionSaving(false);
     }
+  };
+
+  // Pad de firma en el formulario de remisión
+  useEffect(() => {
+    if (!firmaFormModal) return;
+    const canvas = firmaFormCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+
+    const getPos = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const src  = e.touches ? e.touches[0] : e;
+      return {
+        x: (src.clientX - rect.left) * (canvas.width / rect.width),
+        y: (src.clientY - rect.top)  * (canvas.height / rect.height),
+      };
+    };
+    const down  = (e) => { e.preventDefault(); firmaFormDrawing.current = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+    const move  = (e) => { e.preventDefault(); if (!firmaFormDrawing.current) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+    const up    = ()  => { firmaFormDrawing.current = false; };
+
+    canvas.addEventListener('mousedown',  down);
+    canvas.addEventListener('mousemove',  move);
+    canvas.addEventListener('mouseup',    up);
+    canvas.addEventListener('touchstart', down, { passive: false });
+    canvas.addEventListener('touchmove',  move, { passive: false });
+    canvas.addEventListener('touchend',   up);
+    return () => {
+      canvas.removeEventListener('mousedown',  down);
+      canvas.removeEventListener('mousemove',  move);
+      canvas.removeEventListener('mouseup',    up);
+      canvas.removeEventListener('touchstart', down);
+      canvas.removeEventListener('touchmove',  move);
+      canvas.removeEventListener('touchend',   up);
+    };
+  }, [firmaFormModal]);
+
+  const guardarFirmaForm = () => {
+    const canvas = firmaFormCanvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL('image/png');
+    if (firmaFormModal === 'conductor') {
+      setRemisionForm((f) => ({ ...f, firmaConductor: dataUrl }));
+    } else {
+      setRemisionForm((f) => ({ ...f, firmaPropietario: dataUrl }));
+    }
+    setFirmaFormModal(null);
+  };
+
+  const limpiarFirmaForm = () => {
+    const canvas = firmaFormCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   };
 
   const openSignatureModal = (remision) => {
@@ -913,11 +982,35 @@ const CampanaDetail = () => {
               <div className="am-grid am-grid-form-160">
                 <div className="am-modal-row">
                   <label>Firma conductor</label>
-                  <input name="firmaConductor" value={remisionForm.firmaConductor} onChange={handleRemisionChange} />
+                  {remisionForm.firmaConductor && remisionForm.firmaConductor.startsWith('data:') ? (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <img src={remisionForm.firmaConductor} alt="firma" style={{ height: '48px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }} />
+                      <button type="button" className="am-btn am-btn-ghost" style={{ fontSize: '12px' }}
+                        onClick={() => setRemisionForm((f) => ({ ...f, firmaConductor: '' }))}>Borrar</button>
+                    </div>
+                  ) : (
+                    <button type="button" className="am-btn am-btn-ghost"
+                      style={{ textAlign: 'left', border: '1px dashed #94a3b8', borderRadius: '10px', padding: '12px 16px', color: '#64748b', fontSize: '13px', cursor: 'pointer', background: '#f8fafc' }}
+                      onClick={() => setFirmaFormModal('conductor')}>
+                      ✍️ Tocar para firmar
+                    </button>
+                  )}
                 </div>
                 <div className="am-modal-row">
                   <label>Firma propietario</label>
-                  <input name="firmaPropietario" value={remisionForm.firmaPropietario} onChange={handleRemisionChange} />
+                  {remisionForm.firmaPropietario && remisionForm.firmaPropietario.startsWith('data:') ? (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <img src={remisionForm.firmaPropietario} alt="firma" style={{ height: '48px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff' }} />
+                      <button type="button" className="am-btn am-btn-ghost" style={{ fontSize: '12px' }}
+                        onClick={() => setRemisionForm((f) => ({ ...f, firmaPropietario: '' }))}>Borrar</button>
+                    </div>
+                  ) : (
+                    <button type="button" className="am-btn am-btn-ghost"
+                      style={{ textAlign: 'left', border: '1px dashed #94a3b8', borderRadius: '10px', padding: '12px 16px', color: '#64748b', fontSize: '13px', cursor: 'pointer', background: '#f8fafc' }}
+                      onClick={() => setFirmaFormModal('propietario')}>
+                      ✍️ Tocar para firmar
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="am-modal-row">
@@ -1041,6 +1134,34 @@ const CampanaDetail = () => {
           </div>
         </div>
 
+        {/* Modal pad de firma — formulario remisión */}
+        {firmaFormModal && (
+          <div className="am-modal-backdrop" style={{ zIndex: 1100 }}>
+            <div className="am-modal" style={{ maxWidth: '540px' }}>
+              <h3 className="am-modal-title">
+                Firma — {firmaFormModal === 'conductor' ? 'Conductor' : 'Propietario'}
+              </h3>
+              <div className="am-modal-body">
+                <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '10px' }}>
+                  Dibujá la firma en el área blanca
+                </p>
+                <canvas
+                  ref={firmaFormCanvasRef}
+                  width={500}
+                  height={160}
+                  className="am-sign-canvas"
+                  style={{ border: '2px solid #cbd5e1', borderRadius: '12px', cursor: 'crosshair', touchAction: 'none', display: 'block', width: '100%' }}
+                />
+              </div>
+              <div className="am-modal-actions">
+                <button type="button" className="am-btn am-btn-ghost" onClick={() => setFirmaFormModal(null)}>Cancelar</button>
+                <button type="button" className="am-btn am-btn-ghost" onClick={limpiarFirmaForm}>Limpiar</button>
+                <button type="button" className="am-btn am-btn-primary" onClick={guardarFirmaForm}>Guardar Firma</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {signatureModalOpen && (
           <div className="am-modal-backdrop">
             <div className="am-modal" style={{ maxWidth: '620px' }}>
@@ -1161,16 +1282,16 @@ const CampanaDetail = () => {
                 onClick={async () => {
                   const items = invLista.filter((r) => Number(r.monto) > 0)
                     .map((r) => ({ fecha: r.fecha, monto: Number(r.monto), descripcion: r.descripcion || null }));
-                  if (!items.length) return window.alert('Ingresá al menos una inversión con monto válido');
+                  if (!items.length) return errorAlert('Ingresá al menos una inversión con monto válido');
                   setGuardandoInv(true);
                   try {
                     await registrarInversiones(invSiembra.id, items);
                     const updated = await fetchSiembras();
                     setSiembras(updated);
                     setInvModal(false);
-                    window.alert('✅ Inversiones registradas');
+                    toast('success', 'Inversiones registradas');
                   } catch (err) {
-                    window.alert(`Error: ${err.message}`);
+                    errorAlert(err.message);
                   } finally {
                     setGuardandoInv(false);
                   }

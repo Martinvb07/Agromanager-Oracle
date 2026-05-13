@@ -1,6 +1,6 @@
 import {
   Sprout, Droplets, Bug, MapPin, Leaf, Users, DollarSign,
-  Truck, FileText, TrendingUp, CalendarRange, LogOut, X, User, Wheat,
+  Truck, FileText, TrendingUp, CalendarRange, LogOut, X, User,
 } from 'lucide-react';
 
 const sections = [
@@ -10,7 +10,6 @@ const sections = [
   { id: 'finanzas',      name: 'Finanzas',       icon: DollarSign   },
   { id: 'maquinaria',    name: 'Maquinaria',     icon: Truck        },
   { id: 'campanas',      name: 'Campañas',       icon: CalendarRange },
-  { id: 'siembras',      name: 'Siembras',       icon: Wheat        },
   { id: 'semillas',      name: 'Semillas',       icon: Sprout       },
   { id: 'plagas',        name: 'Plagas',         icon: Bug          },
   { id: 'riego',         name: 'Riego',          icon: Droplets     },

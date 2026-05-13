@@ -154,8 +154,8 @@ const FertilizantesTable = ({
 
       {/* Modal aplicar en lote */}
       {loteModal && (
-        <div className="am-modal-backdrop">
-          <div className="am-modal" style={{ maxWidth: '580px' }}>
+        <div className="am-modal-backdrop" style={{ alignItems: 'center', overflowY: 'auto', padding: '20px 0' }}>
+          <div className="am-modal" style={{ maxWidth: '580px', width: '90%', maxHeight: '90vh', overflowY: 'auto', margin: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 className="am-modal-title" style={{ margin: 0 }}>Aplicar Fertilizantes en Lote</h3>
               <button onClick={() => setLoteModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
