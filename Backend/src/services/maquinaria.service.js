@@ -1,18 +1,35 @@
 import { query, insertReturningId, toDate } from '../config/db.js';
 
+async function upsertTipoMaquinaria(nombre) {
+  if (!nombre) return null;
+  const r = await query(`SELECT id AS "id" FROM tipos_maquinaria WHERE nombre = :nombre`, { nombre });
+  if (r.rows[0]) return r.rows[0].id;
+  return insertReturningId(
+    `INSERT INTO tipos_maquinaria (nombre) VALUES (:nombre) RETURNING id INTO :outId`,
+    { nombre }
+  );
+}
+
 const SELECT_FIELDS = `
-  id                    AS "id",
-  nombre                AS "nombre",
-  tipo                  AS "tipo",
-  estado                AS "estado",
-  ultimo_mantenimiento  AS "ultimoMantenimiento",
-  proximo_mantenimiento AS "proximoMantenimiento"
+  m.id                    AS "id",
+  m.nombre                AS "nombre",
+  tm.nombre               AS "tipo",
+  em.nombre               AS "estado",
+  m.ultimo_mantenimiento  AS "ultimoMantenimiento",
+  m.proximo_mantenimiento AS "proximoMantenimiento"
+`;
+
+const FROM_JOIN = `
+  FROM maquinaria m
+  LEFT JOIN tipos_maquinaria   tm ON tm.id = m.tipo_id
+  LEFT JOIN estados_maquinaria em ON em.id = m.estado_id
 `;
 
 export const maquinariaService = {
   async list(userId) {
     const result = await query(
-      `SELECT ${SELECT_FIELDS} FROM maquinaria WHERE usuario_id = :userId ORDER BY id DESC`,
+      `SELECT ${SELECT_FIELDS} ${FROM_JOIN}
+        WHERE m.usuario_id = :userId ORDER BY m.id DESC`,
       { userId }
     );
     return result.rows;
@@ -27,14 +44,16 @@ export const maquinariaService = {
       proximoMantenimiento = null,
     } = payload || {};
 
+    const tipoId = await upsertTipoMaquinaria(tipo);
+
     const id = await insertReturningId(
-      `INSERT INTO maquinaria (nombre, tipo, estado, ultimo_mantenimiento, proximo_mantenimiento, usuario_id)
-       VALUES (:nombre, :tipo, :estado, :ultimoMantenimiento, :proximoMantenimiento, :userId)
+      `INSERT INTO maquinaria (nombre, tipo_id, estado_id, ultimo_mantenimiento, proximo_mantenimiento, usuario_id)
+       VALUES (:nombre, :tipoId,
+               (SELECT id FROM estados_maquinaria WHERE nombre = :estado),
+               :ultimoMantenimiento, :proximoMantenimiento, :userId)
        RETURNING id INTO :outId`,
       {
-        nombre,
-        tipo,
-        estado,
+        nombre, tipoId, estado,
         ultimoMantenimiento: toDate(ultimoMantenimiento),
         proximoMantenimiento: toDate(proximoMantenimiento),
         userId,
@@ -45,23 +64,28 @@ export const maquinariaService = {
   },
 
   async update(userId, id, changes) {
-    const map = {
-      nombre: 'nombre',
-      tipo: 'tipo',
-      estado: 'estado',
-      ultimoMantenimiento: 'ultimo_mantenimiento',
-      proximoMantenimiento: 'proximo_mantenimiento',
-    };
-    const dateKeys = new Set(['ultimoMantenimiento', 'proximoMantenimiento']);
-
     const setParts = [];
     const binds = { userId, id };
 
-    for (const [key, column] of Object.entries(map)) {
-      if (key in changes) {
-        setParts.push(`${column} = :${key}`);
-        binds[key] = dateKeys.has(key) ? toDate(changes[key]) : changes[key];
-      }
+    if ('nombre' in changes) {
+      setParts.push('nombre = :nombre');
+      binds.nombre = changes.nombre;
+    }
+    if ('ultimoMantenimiento' in changes) {
+      setParts.push('ultimo_mantenimiento = :ultimoMantenimiento');
+      binds.ultimoMantenimiento = toDate(changes.ultimoMantenimiento);
+    }
+    if ('proximoMantenimiento' in changes) {
+      setParts.push('proximo_mantenimiento = :proximoMantenimiento');
+      binds.proximoMantenimiento = toDate(changes.proximoMantenimiento);
+    }
+    if ('tipo' in changes) {
+      binds.tipoId = await upsertTipoMaquinaria(changes.tipo);
+      setParts.push('tipo_id = :tipoId');
+    }
+    if ('estado' in changes) {
+      setParts.push('estado_id = (SELECT id FROM estados_maquinaria WHERE nombre = :estado)');
+      binds.estado = changes.estado;
     }
 
     if (!setParts.length) return this.getById(userId, id);
@@ -76,7 +100,8 @@ export const maquinariaService = {
 
   async getById(userId, id) {
     const result = await query(
-      `SELECT ${SELECT_FIELDS} FROM maquinaria WHERE usuario_id = :userId AND id = :id`,
+      `SELECT ${SELECT_FIELDS} ${FROM_JOIN}
+        WHERE m.usuario_id = :userId AND m.id = :id`,
       { userId, id }
     );
     return result.rows[0] || null;

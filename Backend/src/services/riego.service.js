@@ -1,12 +1,28 @@
 import { query, insertReturningId, toDate } from '../config/db.js';
 
+async function upsertTipoRiego(nombre) {
+  if (!nombre) return null;
+  const r = await query(`SELECT id AS "id" FROM tipos_riego WHERE nombre = :nombre`, { nombre });
+  if (r.rows[0]) return r.rows[0].id;
+  return insertReturningId(
+    `INSERT INTO tipos_riego (nombre) VALUES (:nombre) RETURNING id INTO :outId`,
+    { nombre }
+  );
+}
+
 const SELECT_FIELDS = `
   r.id            AS "id",
   p.nombre        AS "parcela",
-  r.tipo          AS "tipo",
+  tr.nombre       AS "tipo",
   r.consumo_agua  AS "consumoAgua",
   r.ultimo_riego  AS "ultimoRiego",
   r.proximo_riego AS "proximoRiego"
+`;
+
+const FROM_JOIN = `
+  FROM riego r
+  LEFT JOIN parcelas    p  ON p.id  = r.parcela_id
+  LEFT JOIN tipos_riego tr ON tr.id = r.tipo_id
 `;
 
 function shape(row) {
@@ -17,9 +33,7 @@ function shape(row) {
 export const riegoService = {
   async list(userId) {
     const result = await query(
-      `SELECT ${SELECT_FIELDS}
-         FROM riego r
-         LEFT JOIN parcelas p ON r.parcela_id = p.id
+      `SELECT ${SELECT_FIELDS} ${FROM_JOIN}
         WHERE r.usuario_id = :userId
         ORDER BY r.proximo_riego DESC NULLS LAST, r.id DESC`,
       { userId }
@@ -35,13 +49,14 @@ export const riegoService = {
       proximoRiego = null,
     } = payload || {};
 
+    const tipoId = await upsertTipoRiego(tipo);
+
     const id = await insertReturningId(
-      `INSERT INTO riego (tipo, consumo_agua, ultimo_riego, proximo_riego, usuario_id)
-       VALUES (:tipo, :consumoAgua, :ultimoRiego, :proximoRiego, :userId)
+      `INSERT INTO riego (tipo_id, consumo_agua, ultimo_riego, proximo_riego, usuario_id)
+       VALUES (:tipoId, :consumoAgua, :ultimoRiego, :proximoRiego, :userId)
        RETURNING id INTO :outId`,
       {
-        tipo,
-        consumoAgua,
+        tipoId, consumoAgua,
         ultimoRiego: toDate(ultimoRiego),
         proximoRiego: toDate(proximoRiego),
         userId,
@@ -52,22 +67,24 @@ export const riegoService = {
   },
 
   async update(userId, id, changes) {
-    const map = {
-      tipo: 'tipo',
-      consumoAgua: 'consumo_agua',
-      ultimoRiego: 'ultimo_riego',
-      proximoRiego: 'proximo_riego',
-    };
-    const dateKeys = new Set(['ultimoRiego', 'proximoRiego']);
-
     const setParts = [];
     const binds = { userId, id };
 
-    for (const [key, column] of Object.entries(map)) {
-      if (key in changes) {
-        setParts.push(`${column} = :${key}`);
-        binds[key] = dateKeys.has(key) ? toDate(changes[key]) : (changes[key] || null);
-      }
+    if ('consumoAgua' in changes) {
+      setParts.push('consumo_agua = :consumoAgua');
+      binds.consumoAgua = changes.consumoAgua;
+    }
+    if ('ultimoRiego' in changes) {
+      setParts.push('ultimo_riego = :ultimoRiego');
+      binds.ultimoRiego = toDate(changes.ultimoRiego);
+    }
+    if ('proximoRiego' in changes) {
+      setParts.push('proximo_riego = :proximoRiego');
+      binds.proximoRiego = toDate(changes.proximoRiego);
+    }
+    if ('tipo' in changes) {
+      binds.tipoId = await upsertTipoRiego(changes.tipo);
+      setParts.push('tipo_id = :tipoId');
     }
 
     if (!setParts.length) return this.getById(userId, id);
@@ -82,9 +99,7 @@ export const riegoService = {
 
   async getById(userId, id) {
     const result = await query(
-      `SELECT ${SELECT_FIELDS}
-         FROM riego r
-         LEFT JOIN parcelas p ON r.parcela_id = p.id
+      `SELECT ${SELECT_FIELDS} ${FROM_JOIN}
         WHERE r.usuario_id = :userId AND r.id = :id`,
       { userId, id }
     );

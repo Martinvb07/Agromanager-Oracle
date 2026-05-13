@@ -1,24 +1,20 @@
 import { query, insertReturningId, toDate } from '../config/db.js';
 
-const SELECT_FIELDS = `
-  p.id           AS "id",
-  p.cultivo      AS "cultivo",
-  tp.tipo        AS "tipo",
-  p.severidad    AS "severidad",
-  tp.tratamiento AS "tratamiento",
-  p.fecha_detec  AS "fechaDetec"
-`;
-
-const FROM_JOIN = `
-  FROM plagas p
-  LEFT JOIN tipos_plaga tp ON tp.id = p.tipo_id
-`;
+async function upsertTipoSemilla(nombre) {
+  if (!nombre) return null;
+  const r = await query(`SELECT id AS "id" FROM tipos_semilla WHERE nombre = :nombre`, { nombre });
+  if (r.rows[0]) return r.rows[0].id;
+  return insertReturningId(
+    `INSERT INTO tipos_semilla (nombre) VALUES (:nombre) RETURNING id INTO :outId`,
+    { nombre }
+  );
+}
 
 async function upsertTipoPlaga(tipo, tratamiento) {
   if (!tipo) return null;
-  const existing = await query(`SELECT id FROM tipos_plaga WHERE tipo = :tipo`, { tipo });
-  if (existing.rows.length > 0) {
-    const id = existing.rows[0].id;
+  const r = await query(`SELECT id AS "id" FROM tipos_plaga WHERE tipo = :tipo`, { tipo });
+  if (r.rows[0]) {
+    const id = r.rows[0].id;
     if (tratamiento !== undefined) {
       await query(
         `UPDATE tipos_plaga SET tratamiento = :tratamiento WHERE id = :id`,
@@ -33,11 +29,25 @@ async function upsertTipoPlaga(tipo, tratamiento) {
   );
 }
 
+const SELECT_FIELDS = `
+  p.id           AS "id",
+  ts.nombre      AS "cultivo",
+  tp.tipo        AS "tipo",
+  p.severidad    AS "severidad",
+  tp.tratamiento AS "tratamiento",
+  p.fecha_detec  AS "fechaDetec"
+`;
+
+const FROM_JOIN = `
+  FROM plagas p
+  LEFT JOIN tipos_semilla ts ON ts.id = p.tipo_semilla_id
+  LEFT JOIN tipos_plaga   tp ON tp.id = p.tipo_id
+`;
+
 export const plagasService = {
   async list(userId) {
     const result = await query(
-      `SELECT ${SELECT_FIELDS}
-       ${FROM_JOIN}
+      `SELECT ${SELECT_FIELDS} ${FROM_JOIN}
         WHERE p.usuario_id = :userId
         ORDER BY p.fecha_detec DESC, p.id DESC`,
       { userId }
@@ -54,13 +64,14 @@ export const plagasService = {
       fechaDetec = null,
     } = payload || {};
 
-    const tipoId = await upsertTipoPlaga(tipo, tratamiento);
+    const tipoSemillaId = await upsertTipoSemilla(cultivo);
+    const tipoId        = await upsertTipoPlaga(tipo, tratamiento);
 
     const id = await insertReturningId(
-      `INSERT INTO plagas (cultivo, tipo_id, severidad, fecha_detec, usuario_id)
-       VALUES (:cultivo, :tipoId, :severidad, :fechaDetec, :userId)
+      `INSERT INTO plagas (tipo_semilla_id, tipo_id, severidad, fecha_detec, usuario_id)
+       VALUES (:tipoSemillaId, :tipoId, :severidad, :fechaDetec, :userId)
        RETURNING id INTO :outId`,
-      { cultivo, tipoId, severidad, fechaDetec: toDate(fechaDetec), userId }
+      { tipoSemillaId, tipoId, severidad, fechaDetec: toDate(fechaDetec), userId }
     );
 
     return this.getById(userId, id);
@@ -78,13 +89,6 @@ export const plagasService = {
       );
     }
 
-    const map = {
-      cultivo: 'cultivo',
-      severidad: 'severidad',
-      fechaDetec: 'fecha_detec',
-    };
-    const dateKeys = new Set(['fechaDetec']);
-
     const setParts = [];
     const binds = { userId, id };
 
@@ -92,12 +96,17 @@ export const plagasService = {
       setParts.push('tipo_id = :tipoId');
       binds.tipoId = tipoId;
     }
-
-    for (const [key, column] of Object.entries(map)) {
-      if (key in changes) {
-        setParts.push(`${column} = :${key}`);
-        binds[key] = dateKeys.has(key) ? toDate(changes[key]) : changes[key];
-      }
+    if ('severidad' in changes) {
+      setParts.push('severidad = :severidad');
+      binds.severidad = changes.severidad;
+    }
+    if ('fechaDetec' in changes) {
+      setParts.push('fecha_detec = :fechaDetec');
+      binds.fechaDetec = toDate(changes.fechaDetec);
+    }
+    if ('cultivo' in changes) {
+      binds.tipoSemillaId = await upsertTipoSemilla(changes.cultivo);
+      setParts.push('tipo_semilla_id = :tipoSemillaId');
     }
 
     if (!setParts.length) return this.getById(userId, id);
@@ -112,8 +121,7 @@ export const plagasService = {
 
   async getById(userId, id) {
     const result = await query(
-      `SELECT ${SELECT_FIELDS}
-       ${FROM_JOIN}
+      `SELECT ${SELECT_FIELDS} ${FROM_JOIN}
         WHERE p.usuario_id = :userId AND p.id = :id`,
       { userId, id }
     );

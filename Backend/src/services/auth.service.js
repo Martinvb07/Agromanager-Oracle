@@ -4,9 +4,12 @@ import { query, lowercaseRow } from '../config/db.js';
 export const authService = {
   async loginWithEmailPassword(email, password) {
     const result = await query(
-      `SELECT id, nombre, email, password_hash, rol, estado
-         FROM usuarios
-        WHERE email = :email
+      `SELECT u.id, u.nombre, u.email, u.password_hash,
+              r.nombre AS "rol", e.nombre AS "estado"
+         FROM usuarios u
+         LEFT JOIN roles   r ON r.id = u.rol_id
+         LEFT JOIN estados e ON e.id = u.estado_id
+        WHERE u.email = :email
         FETCH FIRST 1 ROWS ONLY`,
       { email }
     );

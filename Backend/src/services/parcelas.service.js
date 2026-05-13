@@ -1,15 +1,40 @@
-import { query, insertReturningId, lowercaseRow, lowercaseRows } from '../config/db.js';
+import { query, insertReturningId, lowercaseRow } from '../config/db.js';
+
+async function upsertTipoSemilla(nombre) {
+  if (!nombre) return null;
+  const r = await query(`SELECT id AS "id" FROM tipos_semilla WHERE nombre = :nombre`, { nombre });
+  if (r.rows[0]) return r.rows[0].id;
+  return insertReturningId(
+    `INSERT INTO tipos_semilla (nombre) VALUES (:nombre) RETURNING id INTO :outId`,
+    { nombre }
+  );
+}
+
+const SELECT_FIELDS = `
+  p.id              AS "id",
+  p.nombre          AS "nombre",
+  p.hectareas       AS "hectareas",
+  ts.nombre         AS "cultivo",
+  e.nombre          AS "estado",
+  p.tipo_semilla_id AS "tipoSemillaId",
+  p.estado_id       AS "estadoId"
+`;
+
+const FROM_JOIN = `
+  FROM parcelas p
+  LEFT JOIN tipos_semilla ts ON ts.id = p.tipo_semilla_id
+  LEFT JOIN estados       e  ON e.id  = p.estado_id
+`;
 
 export const parcelasService = {
   async list(userId) {
     const result = await query(
-      `SELECT id, nombre, hectareas, cultivo, estado, inversion
-         FROM parcelas
-        WHERE usuario_id = :userId
-        ORDER BY id DESC`,
+      `SELECT ${SELECT_FIELDS} ${FROM_JOIN}
+        WHERE p.usuario_id = :userId
+        ORDER BY p.id DESC`,
       { userId }
     );
-    return lowercaseRows(result.rows);
+    return result.rows;
   },
 
   async create(userId, payload) {
@@ -18,14 +43,17 @@ export const parcelasService = {
       hectareas = null,
       cultivo = null,
       estado = 'Activa',
-      inversion = 0,
     } = payload || {};
 
+    const tipoSemillaId = await upsertTipoSemilla(cultivo);
+
     const id = await insertReturningId(
-      `INSERT INTO parcelas (nombre, hectareas, cultivo, estado, inversion, usuario_id)
-       VALUES (:nombre, :hectareas, :cultivo, :estado, :inversion, :userId)
+      `INSERT INTO parcelas (nombre, hectareas, tipo_semilla_id, estado_id, usuario_id)
+       VALUES (:nombre, :hectareas, :tipoSemillaId,
+               (SELECT id FROM estados WHERE nombre = :estado AND contexto = 'parcela'),
+               :userId)
        RETURNING id INTO :outId`,
-      { nombre, hectareas, cultivo, estado, inversion, userId }
+      { nombre, hectareas, tipoSemillaId, estado, userId }
     );
 
     return this.getById(userId, id);
@@ -33,24 +61,32 @@ export const parcelasService = {
 
   async getById(userId, id) {
     const result = await query(
-      `SELECT id, nombre, hectareas, cultivo, estado, inversion
-         FROM parcelas
-        WHERE id = :id AND usuario_id = :userId`,
+      `SELECT ${SELECT_FIELDS} ${FROM_JOIN}
+        WHERE p.id = :id AND p.usuario_id = :userId`,
       { id, userId }
     );
     return result.rows[0] ? lowercaseRow(result.rows[0]) : null;
   },
 
   async update(userId, id, changes) {
-    const allowed = ['nombre', 'hectareas', 'cultivo', 'estado', 'inversion'];
     const setParts = [];
     const binds = { userId, id };
 
-    for (const key of allowed) {
-      if (key in changes) {
-        setParts.push(`${key} = :${key}`);
-        binds[key] = changes[key];
-      }
+    if ('nombre' in changes) {
+      setParts.push('nombre = :nombre');
+      binds.nombre = changes.nombre;
+    }
+    if ('hectareas' in changes) {
+      setParts.push('hectareas = :hectareas');
+      binds.hectareas = changes.hectareas;
+    }
+    if ('cultivo' in changes) {
+      binds.tipoSemillaId = await upsertTipoSemilla(changes.cultivo);
+      setParts.push('tipo_semilla_id = :tipoSemillaId');
+    }
+    if ('estado' in changes) {
+      setParts.push(`estado_id = (SELECT id FROM estados WHERE nombre = :estado AND contexto = 'parcela')`);
+      binds.estado = changes.estado;
     }
 
     if (!setParts.length) return this.getById(userId, id);

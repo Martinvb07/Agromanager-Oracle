@@ -4,9 +4,13 @@ import { query, insertReturningId, lowercaseRows } from '../config/db.js';
 export const usuariosService = {
   async listUsers() {
     const result = await query(
-      `SELECT id, nombre, email, rol, estado, created_at
-         FROM usuarios
-        ORDER BY id DESC`
+      `SELECT u.id, u.nombre, u.email,
+              r.nombre AS "rol", e.nombre AS "estado",
+              u.created_at
+         FROM usuarios u
+         LEFT JOIN roles   r ON r.id = u.rol_id
+         LEFT JOIN estados e ON e.id = u.estado_id
+        ORDER BY u.id DESC`
     );
     return lowercaseRows(result.rows);
   },
@@ -25,25 +29,20 @@ export const usuariosService = {
     let passwordHash = password;
     const isBcryptHash =
       typeof password === 'string' && /^\$2[aby]\$[0-9]{2}\$/.test(password);
-
     if (!isBcryptHash) {
       passwordHash = await bcrypt.hash(password, 10);
     }
 
     const id = await insertReturningId(
-      `INSERT INTO usuarios (nombre, email, password_hash, rol, estado, created_at)
-       VALUES (:nombre, :email, :passwordHash, :rol, 'Activo', SYSTIMESTAMP)
+      `INSERT INTO usuarios (nombre, email, password_hash, rol_id, estado_id, created_at)
+       VALUES (:nombre, :email, :passwordHash,
+               (SELECT id FROM roles   WHERE nombre = :rol),
+               (SELECT id FROM estados WHERE nombre = 'Activo' AND contexto = 'usuario'),
+               SYSTIMESTAMP)
        RETURNING id INTO :outId`,
       { nombre, email, passwordHash, rol }
     );
 
-    return {
-      id,
-      nombre,
-      email,
-      rol,
-      estado: 'Activo',
-      created_at: new Date(),
-    };
+    return { id, nombre, email, rol, estado: 'Activo', created_at: new Date() };
   },
 };
