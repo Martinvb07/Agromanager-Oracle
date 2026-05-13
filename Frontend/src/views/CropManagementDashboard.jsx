@@ -16,7 +16,12 @@ import SiembrasTable from '../components/sections/SiembrasTable.jsx';
 import CampanasTable from '../components/sections/CampanasTable.jsx';
 import TractorLoader from '../components/TractorLoader.jsx';
 
+import Swal from 'sweetalert2';
 import { calcularLiquidacion } from '../services/mockData.js';
+
+const toast = (icon, title) => Swal.fire({ toast: true, position: 'top-end', icon, title, showConfirmButton: false, timer: 2500, timerProgressBar: true });
+const confirm = (text) => Swal.fire({ title: '¿Estás seguro?', text, icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626', cancelButtonText: 'Cancelar', confirmButtonText: 'Confirmar' });
+const errorAlert = (msg) => Swal.fire({ icon: 'error', title: 'Error', text: msg });
 import {
   fetchParcelas, crearParcela, actualizarParcela, eliminarParcela,
   fetchTrabajadores, crearTrabajador, actualizarTrabajador, eliminarTrabajador,
@@ -463,9 +468,7 @@ const CropManagementDashboard = () => {
       );
     } catch (err) {
       console.error('Error eliminando trabajador', err);
-      if (typeof window !== 'undefined') {
-        window.alert('No se pudo eliminar el trabajador. Revisa la conexión o vuelve a intentarlo.');
-      }
+      errorAlert('No se pudo eliminar el trabajador. Revisa la conexión o vuelve a intentarlo.');
     } finally {
       setDeleteTrabajadorId(null);
     }
@@ -492,9 +495,7 @@ const CropManagementDashboard = () => {
       setLiquidacionData(null);
     } catch (err) {
       console.error('Error registrando liquidación como egreso', err);
-      if (typeof window !== 'undefined') {
-        window.alert('No se pudo registrar la liquidación en egresos. Intenta nuevamente.');
-      }
+      errorAlert('No se pudo registrar la liquidación en egresos. Intenta nuevamente.');
     }
   };
 
@@ -844,24 +845,25 @@ const CropManagementDashboard = () => {
       if (Array.isArray(data)) setFertilizantes(data);
       const masC = await fetchFertilizanteMasConsumido();
       setMasConsumidoFert(masC);
-      window.alert('✅ Stock sincronizado correctamente');
+      toast('success', 'Stock sincronizado correctamente');
     } catch (err) {
-      window.alert(`Error al sincronizar: ${err.message}`);
+      errorAlert(err.message);
     } finally {
       setSincronizando(false);
     }
   };
 
   const handleCerrarCampana = async (id) => {
-    if (!window.confirm('¿Cerrar esta campaña? Se marcarán las siembras como Cosechada y las parcelas como Inactiva.')) return;
+    const res = await confirm('Se marcarán las siembras como Cosechada y las parcelas como Inactiva.');
+    if (!res.isConfirmed) return;
     setCerrando(id);
     try {
       await cerrarCampana(id);
       const updated = await fetchCampanas();
       setCampanas(updated);
-      window.alert('✅ Campaña cerrada correctamente');
+      toast('success', 'Campaña cerrada correctamente');
     } catch (err) {
-      window.alert(`Error al cerrar campaña: ${err.message}`);
+      errorAlert(err.message);
     } finally {
       setCerrando(null);
     }
@@ -882,7 +884,7 @@ const CropManagementDashboard = () => {
       setEgresos(finData.egresos || []);
       setNominaResultModal(true);
     } catch (err) {
-      window.alert(`Error al liquidar nómina: ${err.message}`);
+      errorAlert(err.message);
     } finally {
       setLiquidandoNomina(false);
     }
@@ -905,9 +907,9 @@ const CropManagementDashboard = () => {
       const updated = await fetchSiembras();
       setSiembras(updated);
       setInversionModal(false);
-      window.alert('✅ Inversiones registradas correctamente');
+      toast('success', 'Inversiones registradas correctamente');
     } catch (err) {
-      window.alert(`Error: ${err.message}`);
+      errorAlert(err.message);
     } finally {
       setGuardandoInv(false);
     }
@@ -924,9 +926,9 @@ const CropManagementDashboard = () => {
       setFertilizantes(ferts);
       setStockBajo(bajo);
       setMasConsumidoFert(masC);
-      window.alert('✅ Fertilizantes aplicados correctamente');
+      toast('success', 'Fertilizantes aplicados correctamente');
     } catch (err) {
-      window.alert(`Error al aplicar: ${err.message}`);
+      errorAlert(err.message);
       throw err;
     }
   };
@@ -936,9 +938,9 @@ const CropManagementDashboard = () => {
       await registrarJornadas(trabajadorId, lista);
       const updated = await fetchTrabajadoresConHoras();
       setTrabajadores(updated);
-      window.alert('✅ Jornadas registradas correctamente');
+      toast('success', 'Jornadas registradas correctamente');
     } catch (err) {
-      window.alert(`Error al registrar jornadas: ${err.message}`);
+      errorAlert(err.message);
     }
   };
 
@@ -947,7 +949,7 @@ const CropManagementDashboard = () => {
       const data = await fetchBalancePeriodo(desde, hasta);
       setBalancePeriodo(data);
     } catch (err) {
-      window.alert(`Error al consultar balance: ${err.message}`);
+      errorAlert(err.message);
     }
   };
 
@@ -975,7 +977,8 @@ const CropManagementDashboard = () => {
   };
 
   const handleDeleteCampana = async (id) => {
-    if (typeof window !== 'undefined' && !window.confirm('¿Eliminar esta campaña?')) return;
+    const res = await confirm('Esta acción eliminará la campaña y todos sus registros.');
+    if (!res.isConfirmed) return;
     await eliminarCampana(id);
     setCampanas((prev) => prev.filter((c) => c.id !== id));
   };
@@ -1344,17 +1347,27 @@ const CropManagementDashboard = () => {
             <div className="am-modal-body">
               <div className="am-modal-row">
                 <label>Parcela</label>
-                <input
+                <select
                   value={fertilizanteForm.parcela}
                   onChange={(e) => setFertilizanteForm({ ...fertilizanteForm, parcela: e.target.value })}
-                />
+                >
+                  <option value="">Seleccionar parcela…</option>
+                  {parcelas.map((p) => (
+                    <option key={p.id} value={p.nombre}>{p.nombre}</option>
+                  ))}
+                </select>
               </div>
               <div className="am-modal-row">
                 <label>Fertilizante</label>
-                <input
+                <select
                   value={fertilizanteForm.fertilizante}
                   onChange={(e) => setFertilizanteForm({ ...fertilizanteForm, fertilizante: e.target.value })}
-                />
+                >
+                  <option value="">Seleccionar fertilizante…</option>
+                  {fertilizantes.map((f) => (
+                    <option key={f.id} value={f.fertilizante || f.nombre}>{f.fertilizante || f.nombre}</option>
+                  ))}
+                </select>
               </div>
               <div className="am-modal-row">
                 <label>Dosis</label>

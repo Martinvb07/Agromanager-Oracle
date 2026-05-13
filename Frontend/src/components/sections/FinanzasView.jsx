@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { TrendingUp } from 'lucide-react';
 
 const toNumber = (value) => (typeof value === 'number' ? value : Number(value) || 0);
 
@@ -51,9 +52,7 @@ const FinanzasView = ({ ingresos, egresos, balancePeriodo, onAddIngreso, onAddEg
         className="am-card am-p-6"
         style={{ borderLeft: '4px solid #6366f1' }}
       >
-        <h3 className="am-card-header" style={{ marginBottom: '14px' }}>
-          📊 Balance por Período <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 400 }}>(fn_balance_periodo)</span>
-        </h3>
+        <h3 className="am-card-header" style={{ marginBottom: '14px' }}>Balance por Período</h3>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
             <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Desde</label>
@@ -95,7 +94,7 @@ const FinanzasView = ({ ingresos, egresos, balancePeriodo, onAddIngreso, onAddEg
               gap: '12px',
             }}
           >
-            <span style={{ fontSize: '24px' }}>{balancePeriodo.balance >= 0 ? '📈' : '📉'}</span>
+            <TrendingUp size={22} color={balancePeriodo.balance >= 0 ? '#15803d' : '#dc2626'} />
             <div>
               <p style={{ fontSize: '12px', color: '#6b7280' }}>
                 Balance del {balancePeriodo.desde} al {balancePeriodo.hasta}

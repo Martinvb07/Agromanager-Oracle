@@ -11,7 +11,6 @@ const MaquinariaGrid = ({ maquinaria, onAdd, onEdit, onDelete }) => (
     <div className="am-section-head mb-6">
       <h2 className="am-section-title">
         Gestión de Maquinaria
-        <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 400, marginLeft: '8px' }}>(V_MAQUINARIA_DETALLE)</span>
       </h2>
       <button className="am-badge am-warning" style={{ cursor: 'pointer' }} onClick={onAdd}>
         + Registrar Maquinaria

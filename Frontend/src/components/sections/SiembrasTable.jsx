@@ -13,7 +13,6 @@ const SiembrasTable = ({ siembras = [], onRegistrarInversiones }) => (
     <div className="am-section-head mb-6">
       <h2 className="am-section-title">
         Siembras
-        <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 400, marginLeft: '8px' }}>(V_SIEMBRAS_RESUMEN)</span>
       </h2>
     </div>
 

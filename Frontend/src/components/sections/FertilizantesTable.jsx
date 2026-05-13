@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { RefreshCw, Layers, Plus, AlertTriangle, Trophy, X } from 'lucide-react';
 
 const estadoClass = (estado) => ({
   Disponible: 'am-success',
@@ -20,20 +21,21 @@ const FertilizantesTable = ({
   sincronizando,
   onAplicarLote,
 }) => {
-  const [loteModal, setLoteModal]     = useState(false);
-  const [parcelaId, setParcelaId]     = useState('');
-  const [fecha, setFecha]             = useState(new Date().toISOString().slice(0, 10));
-  const [filas, setFilas]             = useState([filaVacia()]);
-  const [aplicando, setAplicando]     = useState(false);
+  const [loteModal, setLoteModal] = useState(false);
+  const [parcelaId, setParcelaId] = useState('');
+  const [fecha, setFecha]         = useState(new Date().toISOString().slice(0, 10));
+  const [filas, setFilas]         = useState([filaVacia()]);
+  const [aplicando, setAplicando] = useState(false);
 
-  const agregarFila = () => setFilas((p) => [...p, filaVacia()]);
-  const eliminarFila = (i) => setFilas((p) => p.filter((_, idx) => idx !== i));
+  const agregarFila   = () => setFilas((p) => [...p, filaVacia()]);
+  const eliminarFila  = (i) => setFilas((p) => p.filter((_, idx) => idx !== i));
   const actualizarFila = (i, field, val) =>
     setFilas((p) => p.map((r, idx) => idx === i ? { ...r, [field]: val } : r));
 
   const submitLote = async () => {
     if (!parcelaId) return window.alert('Seleccioná una parcela');
-    const items = filas.filter((r) => r.fertilizante_id && Number(r.cantidad_kg) > 0)
+    const items = filas
+      .filter((r) => r.fertilizante_id && Number(r.cantidad_kg) > 0)
       .map((r) => ({ fertilizante_id: Number(r.fertilizante_id), cantidad_kg: Number(r.cantidad_kg) }));
     if (!items.length) return window.alert('Agregá al menos un fertilizante con cantidad válida');
     setAplicando(true);
@@ -53,34 +55,36 @@ const FertilizantesTable = ({
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button
             className="am-badge am-warning"
-            style={{ cursor: sincronizando ? 'not-allowed' : 'pointer', opacity: sincronizando ? 0.6 : 1 }}
+            style={{ cursor: sincronizando ? 'not-allowed' : 'pointer', opacity: sincronizando ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '5px' }}
             onClick={onSincronizar}
             disabled={sincronizando}
-            title="sp_sincronizar_stock"
           >
-            {sincronizando ? '⏳ Sincronizando…' : '🔄 Sincronizar Stock'}
+            <RefreshCw size={13} className={sincronizando ? 'spin' : ''} />
+            {sincronizando ? 'Sincronizando…' : 'Sincronizar Stock'}
           </button>
           <button
             className="am-badge am-info"
-            style={{ cursor: 'pointer' }}
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
             onClick={() => { setParcelaId(''); setFilas([filaVacia()]); setLoteModal(true); }}
-            title="sp_aplicar_fertilizantes"
           >
-            🌿 Aplicar en Lote
+            <Layers size={13} />
+            Aplicar en Lote
           </button>
-          <button className="am-badge am-success" style={{ cursor: 'pointer' }} onClick={onAdd}>
-            + Nuevo
+          <button className="am-badge am-success" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }} onClick={onAdd}>
+            <Plus size={13} />
+            Nuevo
           </button>
         </div>
       </div>
 
-      {/* V_STOCK_BAJO */}
       {stockBajo.length > 0 && (
         <div className="am-card am-p-4" style={{ background: 'linear-gradient(135deg,#fef2f2,#fee2e2)', borderLeft: '4px solid #dc2626' }}>
-          <p style={{ fontSize: '13px', fontWeight: 700, color: '#991b1b', marginBottom: '8px' }}>
-            ⚠️ {stockBajo.length} fertilizante{stockBajo.length > 1 ? 's' : ''} bajo el mínimo
-            <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: 400, marginLeft: '6px' }}>(V_STOCK_BAJO)</span>
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <AlertTriangle size={15} color="#991b1b" />
+            <p style={{ fontSize: '13px', fontWeight: 700, color: '#991b1b' }}>
+              {stockBajo.length} fertilizante{stockBajo.length > 1 ? 's' : ''} bajo el mínimo de stock
+            </p>
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {stockBajo.map((f) => (
               <span key={f.id} style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '6px', padding: '3px 8px', fontSize: '12px', color: '#7f1d1d' }}>
@@ -91,13 +95,12 @@ const FertilizantesTable = ({
         </div>
       )}
 
-      {/* fn_fertilizante_mas_consumido */}
       {masConsumido && (
         <div className="am-card am-p-4" style={{ background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', borderLeft: '4px solid #16a34a', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '22px' }}>🏆</span>
+          <Trophy size={20} color="#15803d" />
           <div>
             <p style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase' }}>
-              Más consumido (últimos 30 días) <span style={{ fontWeight: 400 }}>(fn_fertilizante_mas_consumido)</span>
+              Más consumido — últimos 30 días
             </p>
             <p style={{ fontSize: '16px', fontWeight: 700, color: '#15803d' }}>
               {masConsumido.fertilizante || masConsumido.nombre}
@@ -149,95 +152,90 @@ const FertilizantesTable = ({
         </div>
       </div>
 
-      {/* Modal aplicar en lote — sp_aplicar_fertilizantes */}
+      {/* Modal aplicar en lote */}
       {loteModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="am-card am-p-6" style={{ width: '100%', maxWidth: '600px', maxHeight: '85vh', overflow: 'auto' }}>
-            <h3 className="am-card-header" style={{ marginBottom: '16px' }}>
-              🌿 Aplicar Fertilizantes en Lote
-              <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: 400, marginLeft: '6px' }}>(sp_aplicar_fertilizantes)</span>
-            </h3>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-              <div>
-                <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Parcela *</label>
-                <select
-                  value={parcelaId}
-                  onChange={(e) => setParcelaId(e.target.value)}
-                  style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px' }}
-                >
-                  <option value="">Seleccionar parcela…</option>
-                  {parcelas.map((p) => (
-                    <option key={p.id} value={p.id}>{p.nombre}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginBottom: '4px' }}>Fecha de aplicación</label>
-                <input
-                  type="date"
-                  value={fecha}
-                  onChange={(e) => setFecha(e.target.value)}
-                  style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px' }}
-                />
-              </div>
+        <div className="am-modal-backdrop">
+          <div className="am-modal" style={{ maxWidth: '580px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 className="am-modal-title" style={{ margin: 0 }}>Aplicar Fertilizantes en Lote</h3>
+              <button onClick={() => setLoteModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                <X size={18} color="#6b7280" />
+              </button>
             </div>
 
-            <div style={{ display: 'grid', gap: '8px', marginBottom: '12px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px auto', gap: '8px' }}>
-                <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600 }}>FERTILIZANTE</span>
-                <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600 }}>CANTIDAD (kg)</span>
-                <span />
-              </div>
-              {filas.map((fila, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 100px auto', gap: '8px', alignItems: 'center' }}>
-                  <select
-                    value={fila.fertilizante_id}
-                    onChange={(e) => actualizarFila(i, 'fertilizante_id', e.target.value)}
-                    style={{ padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px' }}
-                  >
-                    <option value="">Seleccionar…</option>
-                    {fertilizantes.filter((f) => f.estado !== 'Agotado').map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.fertilizante || f.nombre} ({f.stock_kg} kg disp.)
-                      </option>
+            <div className="am-modal-body">
+              <div className="am-grid am-grid-2-md" style={{ gap: '12px', marginBottom: '16px' }}>
+                <div className="am-modal-row">
+                  <label>Parcela *</label>
+                  <select value={parcelaId} onChange={(e) => setParcelaId(e.target.value)}>
+                    <option value="">Seleccionar parcela…</option>
+                    {parcelas.map((p) => (
+                      <option key={p.id} value={p.id}>{p.nombre}</option>
                     ))}
                   </select>
-                  <input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    placeholder="kg"
-                    value={fila.cantidad_kg}
-                    onChange={(e) => actualizarFila(i, 'cantidad_kg', e.target.value)}
-                    style={{ padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '13px' }}
-                  />
-                  <button
-                    onClick={() => eliminarFila(i)}
-                    style={{ padding: '6px 10px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                  >✕</button>
                 </div>
-              ))}
+                <div className="am-modal-row">
+                  <label>Fecha de aplicación</label>
+                  <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 36px', gap: '8px', marginBottom: '6px', padding: '0 4px' }}>
+                  <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600 }}>FERTILIZANTE</span>
+                  <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600 }}>CANTIDAD (kg)</span>
+                  <span />
+                </div>
+                {filas.map((fila, i) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 36px', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+                    <select
+                      value={fila.fertilizante_id}
+                      onChange={(e) => actualizarFila(i, 'fertilizante_id', e.target.value)}
+                      style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', width: '100%' }}
+                    >
+                      <option value="">Seleccionar…</option>
+                      {fertilizantes.filter((f) => f.estado !== 'Agotado').map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.fertilizante || f.nombre} ({f.stock_kg} kg)
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number" min="0.1" step="0.1" placeholder="kg"
+                      value={fila.cantidad_kg}
+                      onChange={(e) => actualizarFila(i, 'cantidad_kg', e.target.value)}
+                      style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', width: '100%' }}
+                    />
+                    <button
+                      onClick={() => eliminarFila(i)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={agregarFila}
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 12px', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '8px', cursor: 'pointer', fontSize: '13px' }}
+              >
+                <Plus size={13} /> Agregar fertilizante
+              </button>
             </div>
 
-            <button
-              onClick={agregarFila}
-              style={{ marginBottom: '16px', padding: '6px 12px', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}
-            >
-              + Agregar fertilizante
-            </button>
-
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button className="am-badge am-muted" style={{ cursor: 'pointer' }} onClick={() => setLoteModal(false)}>
+            <div className="am-modal-actions">
+              <button type="button" className="am-btn am-btn-ghost" onClick={() => setLoteModal(false)}>
                 Cancelar
               </button>
               <button
-                className="am-badge am-success"
-                style={{ cursor: aplicando ? 'not-allowed' : 'pointer', opacity: aplicando ? 0.6 : 1 }}
+                type="button"
+                className="am-btn am-btn-primary"
+                style={{ opacity: aplicando ? 0.6 : 1 }}
                 onClick={submitLote}
                 disabled={aplicando}
               >
-                {aplicando ? '⏳ Aplicando…' : 'Aplicar en Lote'}
+                {aplicando ? 'Aplicando…' : 'Aplicar en Lote'}
               </button>
             </div>
           </div>

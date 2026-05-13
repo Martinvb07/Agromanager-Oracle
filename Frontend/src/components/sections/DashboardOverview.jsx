@@ -42,8 +42,7 @@ const DashboardOverview = ({ stats, dbStats, resumenFinanciero = [], ingresos, e
     <div className="am-space-6">
       <h2 className="am-section-title mb-6">
         Panel de Control
-        {dbStats && <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 400, marginLeft: '8px' }}>(V_DASHBOARD)</span>}
-      </h2>
+        </h2>
 
       {/* KPIs principales — V_DASHBOARD */}
       <div className="am-grid am-grid-2-md am-grid-4-lg">
@@ -93,7 +92,6 @@ const DashboardOverview = ({ stats, dbStats, resumenFinanciero = [], ingresos, e
         <div className="am-card am-p-6">
           <h3 className="am-card-header" style={{ marginBottom: '12px' }}>
             Resumen Financiero por Mes
-            <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: 400, marginLeft: '6px' }}>(V_RESUMEN_FINANCIERO)</span>
           </h3>
           {mesesFinancieros.length > 0 ? (
             <div style={{ display: 'grid', gap: '10px' }}>

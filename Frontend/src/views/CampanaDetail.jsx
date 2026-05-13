@@ -615,7 +615,7 @@ const CampanaDetail = () => {
           >
             <div style={{ textAlign: 'center', minWidth: '100px' }}>
               <p style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase' }}>
-                Rendimiento <span style={{ fontSize: '10px' }}>(fn_rendimiento_campana)</span>
+                Rendimiento
               </p>
               <p style={{ fontSize: '28px', fontWeight: 800, color: '#15803d' }}>
                 {Number(rendimiento.rendimiento_ha ?? 0).toFixed(2)}
@@ -1127,7 +1127,6 @@ const CampanaDetail = () => {
           <div className="am-card am-p-6" style={{ width:'100%', maxWidth:'540px', maxHeight:'80vh', overflow:'auto' }}>
             <h3 className="am-card-header" style={{ marginBottom:'16px' }}>
               💰 Registrar Inversiones
-              <span style={{ fontSize:'10px', color:'#6b7280', fontWeight:400, marginLeft:'6px' }}>(sp_registrar_inversiones)</span>
             </h3>
             <p style={{ fontSize:'13px', color:'#374151', marginBottom:'14px' }}>
               Siembra: <strong>{invSiembra.tipoSemilla}</strong> — {invSiembra.parcela}

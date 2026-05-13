@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertTriangle, CheckCircle } from 'lucide-react';
 
 const RiegoTable = ({ riego, parcelasVencidas = 0, diasLimite = 7, onAdd, onEdit, onDelete }) => (
   <div className="am-space-6">
@@ -20,7 +21,7 @@ const RiegoTable = ({ riego, parcelasVencidas = 0, diasLimite = 7, onAdd, onEdit
           gap: '12px',
         }}
       >
-        <span style={{ fontSize: '22px' }}>⚠️</span>
+        <AlertTriangle size={18} color="#92400e" />
         <div>
           <p style={{ fontSize: '13px', fontWeight: 700, color: '#92400e' }}>
             {parcelasVencidas} parcela{parcelasVencidas > 1 ? 's' : ''} con riego vencido
@@ -43,7 +44,7 @@ const RiegoTable = ({ riego, parcelasVencidas = 0, diasLimite = 7, onAdd, onEdit
           gap: '12px',
         }}
       >
-        <span style={{ fontSize: '22px' }}>✅</span>
+        <CheckCircle size={18} color="#15803d" />
         <p style={{ fontSize: '13px', fontWeight: 600, color: '#15803d' }}>
           Todas las parcelas tienen riego al día.
         </p>
