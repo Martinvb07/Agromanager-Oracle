@@ -2242,10 +2242,16 @@ const CropManagementDashboard = () => {
               </div>
               <div className="am-modal-row">
                 <label>Tipo</label>
-                <input
+                <select
                   value={egresoForm.tipo}
                   onChange={(e) => setEgresoForm({ ...egresoForm, tipo: e.target.value })}
-                />
+                >
+                  <option value="Insumos">Insumos</option>
+                  <option value="Operación">Operación</option>
+                  <option value="Mantenimiento">Mantenimiento</option>
+                  <option value="Personal">Personal</option>
+                  <option value="Otro">Otro</option>
+                </select>
               </div>
               <div className="am-modal-row">
                 <label>Categoría</label>

@@ -29,6 +29,13 @@ function formatCurrency(value) {
   return `$${n.toLocaleString('es-ES')}`;
 }
 
+function fmtDate(d) {
+  if (!d) return '?';
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return String(d).slice(0, 10);
+  return dt.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 function buildHeuristicAdvice({ question, context }) {
   const stats = context?.stats || {};
   const alerts = Array.isArray(context?.alerts) ? context.alerts : [];
@@ -276,51 +283,23 @@ async function fetchUserContext(userId) {
   return context;
 }
 
-const AGROMANAGER_SYSTEM_PROMPT = `Eres AgroBot, el asistente virtual inteligente de AgroManager — un sistema integral de gestión agrícola.
+const AGROMANAGER_SYSTEM_PROMPT = `Eres AgroBot, el asistente técnico especializado de AgroManager — plataforma integral de gestión agrícola.
 
-Tu rol es ayudar a los usuarios de la plataforma con dudas sobre:
+## Dominio de conocimiento
+Parcelas · Plagas y sanidad · Riego · Maquinaria · Campañas agrícolas · Finanzas (ingresos/egresos) · Semillas · Fertilizantes · Trabajadores · Reportes.
 
-PARCELAS: Gestión de terrenos agrícolas (nombre, hectáreas, cultivo, estado: Activa/En preparación/Cosechada, inversión). Puedes orientar sobre rotación de cultivos, preparación de suelos y planificación de siembras.
+## Reglas de respuesta (OBLIGATORIAS)
+1. **Responde SOLO lo que se pregunta.** Si el usuario pregunta por plagas, responde sobre plagas únicamente — no incluyas datos de parcelas, finanzas u otros módulos a menos que sean directamente relevantes o se pidan.
+2. **Prioriza por severidad/urgencia.** Ordena siempre de mayor a menor criticidad: Alta → Media → Baja.
+3. **Personaliza con los datos del usuario.** El contexto contiene datos reales de su finca. Úsalos para dar recomendaciones específicas, no genéricas. Si el usuario tiene Sogata en Arroz, habla de Sogata — no listes todas las plagas posibles del arroz.
+4. **Sé técnico y preciso.** Usa nombres científicos y comerciales correctos. Incluye dosis, frecuencias y umbrales cuando corresponda.
+5. **Tono profesional y directo.** Sin frases de relleno. Sin repetir lo que el usuario ya sabe. Sin introducir el tema si ya está claro por el contexto.
+6. **Formato limpio:** usa encabezados, listas y negritas con criterio — solo cuando mejoran la legibilidad, no por decoración.
+7. **No inventes datos.** Si no tienes el dato en el contexto, dilo claramente y sugiere cómo registrarlo en AgroManager.
+8. **Idioma:** siempre español.
+9. **Fuera de alcance:** si la pregunta no es agrícola ni de la plataforma, indícalo amablemente y redirige.`;
 
-PLAGAS Y SANIDAD: Registro y control de plagas (tipo, severidad: Bajo/Medio/Alto, cultivo afectado, tratamiento, fecha de detección). Puedes recomendar métodos de control integrado de plagas (MIP), identificación de síntomas, tratamientos orgánicos y químicos, frecuencia de monitoreo y acciones preventivas.
-
-RIEGO: Programación de riego (tipo de riego, consumo de agua, último riego, próximo riego). Puedes asesorar sobre frecuencias óptimas según cultivo y clima, tipos de riego (goteo, aspersión, surco, inundación), ahorro de agua y señales de estrés hídrico.
-
-MAQUINARIA: Inventario y mantenimiento de equipos (nombre, tipo, estado: Operativo/Mantenimiento/Fuera de servicio, fechas de mantenimiento). Puedes orientar sobre mantenimiento preventivo, vida útil y buenas prácticas de uso.
-
-CAMPAÑAS AGRÍCOLAS: Seguimiento de ciclos completos de producción (nombre, fechas, hectáreas, lotes, inversión, gastos operativos, ingresos, rendimiento por ha, producción total). Incluye diario de cosecha (hectáreas cortadas, bultos, notas) y remisiones de transporte.
-
-FINANZAS: Ingresos (ventas) y egresos (insumos, operación, personal). Puedes ayudar a analizar rentabilidad, control de costos y planificación financiera agrícola.
-
-SEMILLAS: Inventario de semillas (tipo, cantidad, proveedor, costo). Puedes orientar sobre selección de variedades, almacenamiento y proveedores.
-
-FERTILIZANTES: Aplicaciones de fertilizantes (parcela, producto, dosis, fecha, estado). Puedes recomendar planes de fertilización, dosis según cultivo y etapa fenológica.
-
-TRABAJADORES: Gestión de personal (nombre, cargo, salario, horas trabajadas, estado). Incluye cálculo de liquidaciones.
-
-REPORTES: La plataforma genera reportes y estadísticas con exportación a PDF.
-
-Reglas de comportamiento:
-- Responde SIEMPRE en español.
-- Sé conciso pero completo. Usa listas cuando sea útil.
-- Si la pregunta es sobre la plataforma, explica cómo usar la función en AgroManager.
-- Si la pregunta es técnica-agrícola (plagas, riego, fertilización, etc.), da consejos prácticos basados en buenas prácticas agrícolas.
-- Si no tienes suficiente información, pide los datos mínimos necesarios.
-- No inventes datos del usuario. Si necesitas contexto específico (ej: qué cultivo tiene), pregunta.
-- Mantén un tono amigable y profesional.
-- Si la pregunta no tiene relación con agricultura o la plataforma, indica amablemente que estás especializado en temas agrícolas y de AgroManager.`;
-
-async function openAiChat({ messages, context }) {
-  const apiKey = env.OPENAI_API_KEY;
-  if (!apiKey) {
-    const err = new Error('OPENAI_API_KEY no configurada');
-    err.status = 400;
-    throw err;
-  }
-
-  const baseUrl = (env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
-  const model = env.OPENAI_MODEL || 'gpt-4o-mini';
-
+async function openAiCompatibleChat({ messages, context, apiKey, baseUrl, model, providerName = 'OpenAI' }) {
   const systemContent = AGROMANAGER_SYSTEM_PROMPT +
     (context ? `\n\nContexto actual del usuario en la plataforma:\n${JSON.stringify(context)}` : '');
 
@@ -345,7 +324,7 @@ async function openAiChat({ messages, context }) {
 
   if (!res.ok) {
     const text = await res.text();
-    const err = new Error(`Error OpenAI ${res.status}: ${text}`);
+    const err = new Error(`Error ${providerName} ${res.status}: ${text}`);
     err.status = 502;
     throw err;
   }
@@ -354,6 +333,40 @@ async function openAiChat({ messages, context }) {
   const content = json?.choices?.[0]?.message?.content;
   if (!content) return 'No se recibió respuesta del modelo.';
   return content;
+}
+
+async function openAiChat({ messages, context }) {
+  const apiKey = env.OPENAI_API_KEY;
+  if (!apiKey) {
+    const err = new Error('OPENAI_API_KEY no configurada');
+    err.status = 400;
+    throw err;
+  }
+  return openAiCompatibleChat({
+    messages,
+    context,
+    apiKey,
+    baseUrl: (env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, ''),
+    model: env.OPENAI_MODEL || 'gpt-4o-mini',
+    providerName: 'OpenAI',
+  });
+}
+
+async function groqChat({ messages, context }) {
+  const apiKey = env.GROQ_API_KEY;
+  if (!apiKey) {
+    const err = new Error('GROQ_API_KEY no configurada');
+    err.status = 400;
+    throw err;
+  }
+  return openAiCompatibleChat({
+    messages,
+    context,
+    apiKey,
+    baseUrl: 'https://api.groq.com/openai/v1',
+    model: env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+    providerName: 'Groq',
+  });
 }
 
 const wikiCache = new Map(); // query → { title, text, ts }
@@ -522,7 +535,7 @@ function getRelevantUserData(q, dbContext) {
   const in7 = new Date(today); in7.setDate(in7.getDate() + 7);
 
   // Parcelas y cultivos
-  if (has('parcela', 'terreno', 'lote', 'hectarea', 'cuanta', 'cultivo', 'sembr')) {
+  if (has('parcela', 'terreno', 'lote', 'hectarea', 'cultivo', 'sembr')) {
     const d = dbContext.parcelas;
     if (Array.isArray(d) && d.length) {
       parts.push(`🌿 **Parcelas (${d.length}):**`);
@@ -538,15 +551,15 @@ function getRelevantUserData(q, dbContext) {
   if (has('plaga', 'insecto', 'enfermedad', 'hongo', 'sanidad', 'virus')) {
     const d = dbContext.plagas;
     if (Array.isArray(d) && d.length) {
-      parts.push(`🐛 **Plagas registradas (${d.length}):**`);
+      const altas = d.filter(p => normalize(p.severidad || '').includes('alt'));
+      parts.push(`🐛 **Plagas registradas: ${d.length}** (${altas.length > 0 ? `🔴 ${altas.length} de alta severidad` : '✅ ninguna crítica'})`);
       for (const p of d.slice(0, 5)) {
         const sevIcon = normalize(p.severidad || '').includes('alt') ? '🔴'
                       : normalize(p.severidad || '').includes('med') ? '🟡' : '🟢';
-        const tto = p.tratamiento ? ` — *Tto:* ${String(p.tratamiento).slice(0, 60)}` : '';
-        parts.push(`- **${p.tipo || '?'}** en ${p.cultivo || '?'} ${sevIcon} ${p.severidad}${tto}`);
+        parts.push(`- **${p.tipo || '?'}** en ${p.cultivo || '?'} ${sevIcon} ${p.severidad}`);
+        if (p.tratamiento) parts.push(`  ↳ ${String(p.tratamiento).slice(0, 100)}`);
       }
-      const altas = d.filter(p => normalize(p.severidad || '').includes('alt'));
-      if (altas.length) parts.push(`⚠️ **${altas.length} plaga(s) de severidad ALTA** — aplica tratamiento inmediato.`);
+      if (altas.length) parts.push(`⚠️ ${altas.length} plaga(s) de **severidad Alta** — aplica tratamiento hoy.`);
     } else parts.push('✅ Sin plagas registradas actualmente.');
   }
 
@@ -554,18 +567,18 @@ function getRelevantUserData(q, dbContext) {
   if (has('riego', 'agua', 'regar', 'irrigacion')) {
     const d = dbContext.riego;
     if (Array.isArray(d) && d.length) {
-      parts.push(`💧 **Riegos programados (${d.length}):**`);
       let vencidos = 0;
+      const lines = [];
       for (const r of d.slice(0, 5)) {
         const proxDate = new Date(r.proximoRiego);
         const overdue = !isNaN(proxDate.getTime()) && proxDate <= today;
         if (overdue) vencidos++;
-        const flag = overdue ? ' ⚠️ **VENCIDO**' : '';
-        const ult = String(r.ultimoRiego || '?').slice(0, 10);
-        const prox = String(r.proximoRiego || '?').slice(0, 10);
-        parts.push(`- ${r.parcela || '?'}: ${r.tipo || '?'} | último: ${ult} | próximo: ${prox}${flag}`);
+        const flag = overdue ? ' ⚠️ vencido' : '';
+        lines.push(`- **${r.parcela || '?'}** (${r.tipo || '?'}): último ${fmtDate(r.ultimoRiego)} → próximo ${fmtDate(r.proximoRiego)}${flag}`);
       }
-      if (vencidos > 0) parts.push(`🚨 **${vencidos} riego(s) vencido(s)** — riega hoy para evitar estrés hídrico.`);
+      parts.push(`💧 **Riegos programados: ${d.length}** (${vencidos > 0 ? `⚠️ ${vencidos} vencido(s)` : '✅ al día'})`);
+      parts.push(...lines);
+      if (vencidos > 0) parts.push(`🚨 Riega hoy para evitar estrés hídrico.`);
     } else parts.push('No tienes riego programado.');
   }
 
@@ -580,7 +593,7 @@ function getRelevantUserData(q, dbContext) {
         const estIcon = normalize(m.estado || '') === 'operativo' ? '🟢'
                       : normalize(m.estado || '').includes('mantenimiento') ? '🟡' : '🔴';
         const proxStr = m.proximoMantenimiento
-          ? ` | próx. mant: ${String(m.proximoMantenimiento).slice(0, 10)}${urgente ? ' ⚠️' : ''}`
+          ? ` | próx. mant: ${fmtDate(m.proximoMantenimiento)}${urgente ? ' ⚠️' : ''}`
           : '';
         parts.push(`- **${m.nombre}** (${m.tipo || '?'}): ${estIcon} ${m.estado}${proxStr}`);
       }
@@ -711,10 +724,10 @@ function buildWeeklyActions(dbContext) {
   if (Array.isArray(dbContext.riego)) {
     const venc = dbContext.riego.filter(r => { const d = new Date(r.proximoRiego); return !isNaN(d.getTime()) && d <= today; });
     if (venc.length) {
-      lines.push(`${n++}. 💧 **Riego urgente:** ${venc.length} programación(es) vencida(s) en ${venc.slice(0, 3).map(r => r.parcela || 'parcela').join(', ')}. Riega hoy para evitar estrés hídrico.`);
+      lines.push(`${n++}. 💧 **Riego urgente:** ${venc.length} vencido(s) — ${venc.slice(0, 3).map(r => `${r.parcela || 'parcela'} (${fmtDate(r.proximoRiego)})`).join(', ')}. Riega hoy para evitar estrés hídrico.`);
     } else {
       const prox = dbContext.riego.filter(r => { const d = new Date(r.proximoRiego); return !isNaN(d.getTime()) && d > today && d <= in7; });
-      if (prox.length) lines.push(`${n++}. 💧 **Riego próximo (esta semana):** ${prox.map(r => r.parcela || 'parcela').join(', ')}. Prepara el equipo con anticipación.`);
+      if (prox.length) lines.push(`${n++}. 💧 **Riego próximo:** ${prox.map(r => `${r.parcela || 'parcela'} el ${fmtDate(r.proximoRiego)}`).join(', ')}. Prepara el equipo.`);
     }
   }
 
@@ -764,6 +777,44 @@ function buildWeeklyActions(dbContext) {
 }
 
 /**
+ * Genera recomendación técnica personalizada basada en las plagas REALES del usuario,
+ * ordenadas por severidad. Reemplaza la recomendación genérica del knowledge.json.
+ */
+function buildPersonalizedPestAdvice(pests) {
+  if (!Array.isArray(pests) || !pests.length) return null;
+
+  const sevOrder = (p) => {
+    const s = normalize(p.severidad || '');
+    if (s.includes('alt')) return 3;
+    if (s.includes('med')) return 2;
+    return 1;
+  };
+
+  const sorted = [...pests].sort((a, b) => sevOrder(b) - sevOrder(a));
+  const lines = ['**Plan de acción fitosanitario:**\n'];
+
+  for (const p of sorted.slice(0, 5)) {
+    const sev = normalize(p.severidad || '');
+    const label = sev.includes('alt') ? '🔴 Severidad Alta — acción inmediata'
+                : sev.includes('med') ? '🟡 Severidad Media — monitorear y tratar'
+                : '🟢 Severidad Baja — monitoreo preventivo';
+    lines.push(`**${p.tipo || 'Plaga desconocida'}** en ${p.cultivo || 'cultivo no especificado'}`);
+    lines.push(`  ${label}`);
+    if (p.tratamiento) lines.push(`  Tratamiento: ${p.tratamiento}`);
+    lines.push('');
+  }
+
+  const altas = sorted.filter(p => normalize(p.severidad || '').includes('alt'));
+  if (altas.length) {
+    lines.push(`⚠️ Tienes **${altas.length} plaga(s) de severidad Alta**. Aplica el tratamiento hoy y realiza seguimiento en 48–72 h.`);
+  } else {
+    lines.push('✅ Sin plagas de severidad Alta. Mantén monitoreo de campo 2 veces por semana.');
+  }
+
+  return lines.join('\n');
+}
+
+/**
  * Detecta alertas urgentes en los datos del usuario (riegos, mantenimientos, plagas, balance).
  */
 function detectProactiveAlerts(dbContext) {
@@ -781,7 +832,7 @@ function detectProactiveAlerts(dbContext) {
       return !isNaN(d.getTime()) && d <= today;
     });
     if (vencidos.length)
-      alerts.push(`⚠️ **${vencidos.length} riego(s) vencido(s):** ${vencidos.slice(0, 3).map((r) => r.parcela || 'parcela').join(', ')}.`);
+      alerts.push(`⚠️ **${vencidos.length} riego(s) vencido(s):** ${vencidos.slice(0, 3).map((r) => `${r.parcela || 'parcela'} (${fmtDate(r.proximoRiego)})`).join(', ')}.`);
   }
 
   if (Array.isArray(dbContext.maquinaria)) {
@@ -931,6 +982,39 @@ function buildSpecificResponse(q, dbContext) {
   if (!dbContext) return null;
   const fmt = (n) => `$${Number(n || 0).toLocaleString('es-ES')}`;
   const has = (...words) => words.some(w => q.includes(w));
+
+  // Conteo de riegos
+  if (has('cuantos', 'cuanto') && has('riego', 'regar')) {
+    const rs = dbContext.riego || [];
+    if (!rs.length) return 'No tienes riegos programados en la plataforma.';
+    const today2 = new Date(); today2.setHours(0, 0, 0, 0);
+    const venc = rs.filter(r => { const d = new Date(r.proximoRiego); return !isNaN(d.getTime()) && d <= today2; });
+    const prox = rs.filter(r => { const d = new Date(r.proximoRiego); return !isNaN(d.getTime()) && d > today2; });
+    let resp = `💧 Tienes **${rs.length} riego(s) programado(s)**.`;
+    if (venc.length) resp += `\n⚠️ **${venc.length} vencido(s):** ${venc.slice(0, 3).map(r => `${r.parcela || '?'} (venció el ${fmtDate(r.proximoRiego)})`).join(', ')}.`;
+    if (prox.length) resp += `\n📅 Próximos: ${prox.slice(0, 3).map(r => `${r.parcela || '?'} el ${fmtDate(r.proximoRiego)}`).join(', ')}.`;
+    return resp;
+  }
+
+  // Conteo de plagas
+  if (has('cuantos', 'cuanta', 'cuantas') && has('plaga', 'enfermedad', 'insecto')) {
+    const pl = dbContext.plagas || [];
+    if (!pl.length) return '✅ No tienes plagas registradas actualmente.';
+    const altas = pl.filter(p => normalize(p.severidad || '').includes('alt')).length;
+    const medias = pl.filter(p => normalize(p.severidad || '').includes('med')).length;
+    let resp = `🐛 Tienes **${pl.length} plaga(s) registrada(s)**.`;
+    if (altas) resp += `\n🔴 **${altas} de severidad Alta** — aplica tratamiento de inmediato.`;
+    if (medias) resp += `\n🟡 ${medias} de severidad Media — monitorea cada 48–72 h.`;
+    return resp;
+  }
+
+  // Conteo de parcelas
+  if (has('cuantas', 'cuantos') && has('parcela', 'lote', 'terreno')) {
+    const ps = dbContext.parcelas || [];
+    if (!ps.length) return 'No tienes parcelas registradas.';
+    const activas = ps.filter(p => normalize(p.estado || '') === 'activa').length;
+    return `🌿 Tienes **${ps.length} parcela(s)** — ${activas} activa(s):\n${ps.map(p => `- **${p.nombre}**: ${p.hectareas} ha (${p.estado})`).join('\n')}`;
+  }
 
   // Total hectáreas
   if (has('cuanta', 'total', 'suma') && has('hectarea', ' ha')) {
@@ -1138,20 +1222,29 @@ async function buildHeuristicChat({ messages, dbContext }) {
       return summary + alertBlock + buildSuggestions(null);
     }
 
-    const data = getRelevantUserData(enrichedQ, dbContext);
+    const data = getRelevantUserData(q, dbContext);
     if (data) {
-      const topic = detectTopic(enrichedQ);
-      // Modo híbrido: si hay conocimiento agrícola relevante, lo añade después de los datos
+      const topic = detectTopic(q);
+      const urgentNote = isUrgent ? '\n\n🚨 *Situación urgente detectada. Actúa de inmediato y registra el evento en AgroManager.*' : '';
+
+      // Para plagas: recomendación personalizada sobre las plagas reales del usuario
+      if (topic === 'plaga' && Array.isArray(dbContext.plagas) && dbContext.plagas.length) {
+        const advice = buildPersonalizedPestAdvice(dbContext.plagas);
+        if (advice) {
+          return data + '\n\n---\n' + advice + addPlatformTip(topic) + urgentNote + buildSuggestions(topic);
+        }
+      }
+
+      // Modo híbrido: para otros temas, añade conocimiento técnico si es relevante (score >= 4)
       const knowledgeMatches = findKnowledge(enrichedQ);
-      if (knowledgeMatches.length > 0 && knowledgeMatches[0].score >= 3) {
+      if (knowledgeMatches.length > 0 && knowledgeMatches[0].score >= 4) {
         const best = knowledgeMatches[0];
         const advice = best.specific || best.byCrop || null;
         if (advice) {
-          const urgentNote = isUrgent ? '\n\n🚨 *Actúa de inmediato y registra en AgroManager.*' : '';
-          return data + '\n\n---\n📖 **Recomendación técnica:**\n' + advice + addPlatformTip(topic) + urgentNote + buildSuggestions(topic);
+          return data + '\n\n---\n📖 **Información técnica:**\n' + advice + addPlatformTip(topic) + urgentNote + buildSuggestions(topic);
         }
       }
-      const urgentNote = isUrgent ? '\n\n🚨 *Situación urgente detectada. Actúa de inmediato y registra el evento en AgroManager.*' : '';
+
       return data + addPlatformTip(topic) + urgentNote + buildSuggestions(topic);
     }
     return buildFullSummary(dbContext);
@@ -1160,7 +1253,7 @@ async function buildHeuristicChat({ messages, dbContext }) {
   // --- Buscar en base de conocimiento local ---
   const matches = findKnowledge(enrichedQ);
   const searchQuery = buildSearchQuery(lastMsg + (prevCtx.crop ? ` ${prevCtx.crop}` : ''));
-  const topic = detectTopic(enrichedQ);
+  const topic = detectTopic(q);
 
   if (matches.length > 0) {
     const best = matches[0];
@@ -1168,10 +1261,17 @@ async function buildHeuristicChat({ messages, dbContext }) {
 
     // Modo híbrido inverso: si hay datos del usuario relacionados, los muestra primero
     if (dbContext && topic) {
-      const userData = getRelevantUserData(enrichedQ, dbContext);
+      const userData = getRelevantUserData(q, dbContext);
       if (userData) {
-        const knowledgeText = answer || best.general;
         const urgentNote = isUrgent ? '\n\n🚨 *Situación urgente: aplica el tratamiento de inmediato.*' : '';
+        // Para plagas, usa recomendación personalizada
+        if (topic === 'plaga' && Array.isArray(dbContext.plagas) && dbContext.plagas.length) {
+          const personalizedAdvice = buildPersonalizedPestAdvice(dbContext.plagas);
+          if (personalizedAdvice) {
+            return userData + '\n\n---\n' + personalizedAdvice + urgentNote + addPlatformTip(topic) + buildSuggestions(topic);
+          }
+        }
+        const knowledgeText = answer || best.general;
         return userData + '\n\n---\n📖 **Información técnica:**\n' + knowledgeText + urgentNote + addPlatformTip(topic) + buildSuggestions(topic);
       }
     }
@@ -1315,6 +1415,12 @@ export const aiService = {
       return { answer, provider: 'anthropic' };
     }
 
+    if (provider === 'groq') {
+      const msgs = [{ role: 'user', content: question || 'Dame 3 acciones prioritarias para esta semana.' }];
+      const answer = await groqChat({ messages: msgs, context });
+      return { answer, provider: 'groq' };
+    }
+
     if (provider === 'openai') {
       const answer = await openAiAdvice({ question, context });
       return { answer, provider: 'openai' };
@@ -1339,6 +1445,11 @@ export const aiService = {
     if (provider === 'anthropic') {
       const answer = await anthropicChat({ messages, context: dbContext });
       return { answer, provider: 'anthropic' };
+    }
+
+    if (provider === 'groq') {
+      const answer = await groqChat({ messages, context: dbContext });
+      return { answer, provider: 'groq' };
     }
 
     if (provider === 'openai') {
