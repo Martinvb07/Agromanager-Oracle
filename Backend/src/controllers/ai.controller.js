@@ -1,6 +1,12 @@
 import { aiService } from '../services/ai.service.js';
 
 export const aiController = {
+  async alerts(req, res) {
+    const userId = req.user?.id;
+    const data = await aiService.getAlerts({ userId });
+    res.status(200).json({ data });
+  },
+
   async advice(req, res) {
     const user = req.user;
     const { question = '', context = {} } = req.body || {};

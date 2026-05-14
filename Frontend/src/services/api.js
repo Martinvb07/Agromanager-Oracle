@@ -448,6 +448,12 @@ export async function fetchRendimientoCampana(id) {
   return json.data;
 }
 
+// Alertas activas del usuario (para badge del chatbot)
+export async function fetchAlertas() {
+  const json = await request('/ai/alerts');
+  return json.data;
+}
+
 // sp_liquidar_nomina
 export async function liquidarNomina(mes, anio) {
   const json = await request('/trabajadores/nomina/liquidar', {

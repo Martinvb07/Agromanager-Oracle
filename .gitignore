@@ -22,6 +22,9 @@ Wallet_*/
 # Build output
 Frontend/dist/
 
+# Document generation (Word reports, temp scripts)
+docgen/
+
 # Logs
 *.log
 npm-debug.log*

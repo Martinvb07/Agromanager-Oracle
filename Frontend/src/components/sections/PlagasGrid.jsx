@@ -1,3 +1,5 @@
+import { fmtDate } from '../../utils/fmt.js';
+
 const nivelColor = (nivel) => ({
   'Bajo': 'am-success',
   'Medio': 'am-warning',
@@ -19,7 +21,7 @@ const PlagasGrid = ({ plagas, onAdd, onEdit, onDelete }) => (
           </div>
           <div style={{display:'grid',gap:'8px',fontSize:'14px',color:'#475569',marginBottom:'12px'}}>
             <p><span style={{fontWeight:600}}>Tipo de plaga:</span> {p.tipo}</p>
-            <p><span style={{fontWeight:600}}>Fecha detección:</span> {p.fechaDetec}</p>
+            <p><span style={{fontWeight:600}}>Fecha detección:</span> {fmtDate(p.fechaDetec)}</p>
             <p><span style={{fontWeight:600}}>Tratamiento:</span> {p.tratamiento}</p>
           </div>
           <div style={{display:'flex',gap:'12px'}}>

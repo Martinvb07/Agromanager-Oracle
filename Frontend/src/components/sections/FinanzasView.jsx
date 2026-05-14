@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TrendingUp } from 'lucide-react';
+import { fmtDate } from '../../utils/fmt.js';
 
 const toNumber = (value) => (typeof value === 'number' ? value : Number(value) || 0);
 
@@ -125,7 +126,7 @@ const FinanzasView = ({ ingresos, egresos, balancePeriodo, onAddIngreso, onAddEg
               <div key={ingreso.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', padding: '12px', background: '#ecfdf5', borderRadius: '10px' }}>
                 <div>
                   <p style={{ fontSize: '14px', fontWeight: 600, color: '#1f2937' }}>{ingreso.concepto}</p>
-                  <p style={{ fontSize: '12px', color: '#475569' }}>{ingreso.fecha} • {ingreso.parcela}</p>
+                  <p style={{ fontSize: '12px', color: '#475569' }}>{fmtDate(ingreso.fecha)} • {ingreso.parcela}</p>
                 </div>
                 <p style={{ fontSize: '14px', fontWeight: 800, color: '#16a34a' }}>{COP.format(toNumber(ingreso.monto))}</p>
               </div>
@@ -145,7 +146,7 @@ const FinanzasView = ({ ingresos, egresos, balancePeriodo, onAddIngreso, onAddEg
               <div key={egreso.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', padding: '12px', background: '#fee2e2', borderRadius: '10px' }}>
                 <div>
                   <p style={{ fontSize: '14px', fontWeight: 600, color: '#1f2937' }}>{egreso.concepto}</p>
-                  <p style={{ fontSize: '12px', color: '#475569' }}>{egreso.fecha} • {egreso.categoria}</p>
+                  <p style={{ fontSize: '12px', color: '#475569' }}>{fmtDate(egreso.fecha)} • {egreso.categoria}</p>
                 </div>
                 <p style={{ fontSize: '14px', fontWeight: 800, color: '#dc2626' }}>- {COP.format(toNumber(egreso.monto))}</p>
               </div>

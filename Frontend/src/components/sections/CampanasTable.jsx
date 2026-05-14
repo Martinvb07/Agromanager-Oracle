@@ -1,11 +1,5 @@
 import React from 'react';
-
-const formatDate = (value) => {
-  if (!value) return '';
-  const d = new Date(value);
-  if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
-  return String(value).slice(0, 10);
-};
+import { fmtDate } from '../../utils/fmt.js';
 
 const CampanasTable = ({ campanas, onAdd, onEdit, onDelete, onCerrar, cerrando }) => (
   <div className="am-space-6">
@@ -49,7 +43,7 @@ const CampanasTable = ({ campanas, onAdd, onEdit, onDelete, onCerrar, cerrando }
                     )}
                   </td>
                   <td>
-                    {formatDate(c.fechaInicio)} → {formatDate(c.fechaFin)}
+                    {fmtDate(c.fechaInicio)} → {fmtDate(c.fechaFin)}
                   </td>
                   <td>{c.hectareas ?? '-'} ha</td>
                   <td>{c.lotes ?? '-'}</td>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { fmtDate } from '../../utils/fmt.js';
 
 const estadoClass = (estado) => ({
   Activa:    'am-success',
@@ -42,7 +43,7 @@ const SiembrasTable = ({ siembras = [], onRegistrarInversiones }) => (
                 <tr key={s.id}>
                   <td>{s.parcela ?? '-'}</td>
                   <td>{s.tipoSemilla ?? '-'}</td>
-                  <td>{s.fechaSiembra ? String(s.fechaSiembra).slice(0, 10) : '-'}</td>
+                  <td>{fmtDate(s.fechaSiembra)}</td>
                   <td>{s.cantidadKg ?? '-'} kg</td>
                   <td>{s.proveedor ?? '-'}</td>
                   <td>

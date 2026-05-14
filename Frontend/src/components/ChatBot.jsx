@@ -1,6 +1,42 @@
 import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Bot, User } from 'lucide-react';
-import { enviarMensajeChat } from '../services/api.js';
+import { enviarMensajeChat, fetchAlertas } from '../services/api.js';
+
+/** Separa las sugerencias (• ...) del cuerpo principal de la respuesta del bot. */
+function parseBotMessage(content) {
+  const idx = content.lastIndexOf('\n\n💡');
+  if (idx === -1) return { answer: content, suggestions: [] };
+  const answer = content.slice(0, idx);
+  const rest = content.slice(idx);
+  const suggestions = rest
+    .split('\n')
+    .filter(l => l.trim().startsWith('•'))
+    .map(l => l.replace(/^[•\s]+/, '').trim())
+    .filter(Boolean);
+  return { answer, suggestions };
+}
+
+/** Renderiza una línea con soporte de **negrita** e *cursiva*. */
+function renderLine(line) {
+  const boldParts = line.split(/\*\*(.*?)\*\*/g);
+  return boldParts.map((part, i) => {
+    if (i % 2 === 1) return <strong key={i}>{part}</strong>;
+    const italicParts = part.split(/\*(.*?)\*/g);
+    return italicParts.map((ip, j) =>
+      j % 2 === 1 ? <em key={j}>{ip}</em> : ip
+    );
+  });
+}
+
+/** Renderiza contenido multilínea con markdown básico. */
+function renderContent(content) {
+  return content.split('\n').map((line, i, arr) => (
+    <span key={i}>
+      {renderLine(line)}
+      {i < arr.length - 1 && <br />}
+    </span>
+  ));
+}
 
 export default function ChatBot() {
   const [open, setOpen] = useState(false);
@@ -13,53 +49,64 @@ export default function ChatBot() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [alertCount, setAlertCount] = useState(0);
+  const [suggestions, setSuggestions] = useState([]);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
+  // Cargar badge de alertas al montar
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    fetchAlertas()
+      .then(data => setAlertCount(Array.isArray(data) ? data.length : 0))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   useEffect(() => {
-    if (open && inputRef.current) {
-      inputRef.current.focus();
-    }
+    if (open && inputRef.current) inputRef.current.focus();
   }, [open]);
 
-  const handleSend = async () => {
-    const text = input.trim();
-    if (!text || loading) return;
+  const sendMessage = async (text) => {
+    const trimmed = text.trim();
+    if (!trimmed || loading) return;
 
-    const userMsg = { role: 'user', content: text };
+    const userMsg = { role: 'user', content: trimmed };
     const updated = [...messages, userMsg];
     setMessages(updated);
     setInput('');
+    setSuggestions([]);
     setLoading(true);
 
     try {
       const chatHistory = updated
-        .filter((m) => m.role === 'user' || m.role === 'assistant')
+        .filter(m => m.role === 'user' || m.role === 'assistant')
         .slice(-20);
 
       const data = await enviarMensajeChat({ messages: chatHistory });
-      setMessages((prev) => [
+      const raw = data?.answer || 'No se recibió respuesta.';
+      const { answer, suggestions: newSuggestions } = parseBotMessage(raw);
+
+      setMessages(prev => [...prev, { role: 'assistant', content: answer }]);
+      setSuggestions(newSuggestions);
+
+      // Actualizar badge tras cada mensaje
+      fetchAlertas()
+        .then(d => setAlertCount(Array.isArray(d) ? d.length : 0))
+        .catch(() => {});
+    } catch {
+      setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: data?.answer || 'No se recibió respuesta.' },
-      ]);
-    } catch (e) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: 'Lo siento, hubo un error al procesar tu mensaje. Intenta de nuevo.',
-        },
+        { role: 'assistant', content: 'Lo siento, hubo un error al procesar tu mensaje. Intenta de nuevo.' },
       ]);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleSend = () => sendMessage(input);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -70,7 +117,7 @@ export default function ChatBot() {
 
   return (
     <>
-      {/* Floating button */}
+      {/* Botón flotante con badge de alertas */}
       {!open && (
         <button
           type="button"
@@ -79,13 +126,16 @@ export default function ChatBot() {
           aria-label="Abrir chat"
         >
           <MessageCircle size={26} />
+          {alertCount > 0 && (
+            <span className="chatbot-badge">{alertCount > 9 ? '9+' : alertCount}</span>
+          )}
         </button>
       )}
 
-      {/* Chat window */}
+      {/* Ventana de chat */}
       {open && (
         <div className="chatbot-window">
-          {/* Header */}
+          {/* Cabecera */}
           <div className="chatbot-header">
             <div className="chatbot-header-info">
               <Bot size={22} />
@@ -104,7 +154,7 @@ export default function ChatBot() {
             </button>
           </div>
 
-          {/* Messages */}
+          {/* Mensajes */}
           <div className="chatbot-messages">
             {messages.map((msg, i) => (
               <div
@@ -115,12 +165,7 @@ export default function ChatBot() {
                   {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
                 </div>
                 <div className="chatbot-msg-bubble">
-                  {msg.content.split('\n').map((line, j) => (
-                    <span key={j}>
-                      {line.replace(/\*\*(.*?)\*\*/g, (_, t) => t)}
-                      {j < msg.content.split('\n').length - 1 && <br />}
-                    </span>
-                  ))}
+                  {renderContent(msg.content)}
                 </div>
               </div>
             ))}
@@ -130,14 +175,28 @@ export default function ChatBot() {
                   <Bot size={16} />
                 </div>
                 <div className="chatbot-msg-bubble chatbot-typing">
-                  <span></span>
-                  <span></span>
-                  <span></span>
+                  <span /><span /><span />
                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Chips de sugerencias clicables */}
+          {suggestions.length > 0 && !loading && (
+            <div className="chatbot-chips">
+              {suggestions.map((s, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className="chatbot-chip"
+                  onClick={() => sendMessage(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Input */}
           <div className="chatbot-input-area">
@@ -145,7 +204,7 @@ export default function ChatBot() {
               ref={inputRef}
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Escribe tu pregunta..."
               className="chatbot-input"

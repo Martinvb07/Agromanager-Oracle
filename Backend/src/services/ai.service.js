@@ -89,6 +89,36 @@ function buildHeuristicAdvice({ question, context }) {
   return lines.join('\n');
 }
 
+/** Consulta liviana solo para calcular alertas (badge del chat). */
+async function fetchAlertContext(userId) {
+  const queries = {
+    riego: `SELECT r.proximo_riego AS "proximoRiego", p.nombre AS "parcela"
+              FROM riego r LEFT JOIN parcelas p ON p.id = r.parcela_id
+             WHERE r.usuario_id = :userId FETCH FIRST 15 ROWS ONLY`,
+    maquinaria: `SELECT nombre AS "nombre", proximo_mantenimiento AS "proximoMantenimiento"
+                   FROM maquinaria WHERE usuario_id = :userId FETCH FIRST 15 ROWS ONLY`,
+    plagas: `SELECT severidad AS "severidad" FROM plagas WHERE usuario_id = :userId FETCH FIRST 10 ROWS ONLY`,
+  };
+  const ctx = {};
+  const results = await Promise.allSettled(
+    Object.entries(queries).map(async ([key, sql]) => {
+      const r = await query(sql, { userId });
+      return { key, rows: r.rows };
+    })
+  );
+  for (const r of results) {
+    if (r.status === 'fulfilled') ctx[r.value.key] = r.value.rows;
+  }
+  try {
+    const now = new Date();
+    const mes = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const ing = await query(`SELECT NVL(SUM(monto),0) AS "total" FROM ingresos WHERE usuario_id=:userId AND TO_CHAR(fecha,'YYYY-MM')=:mes`, { userId, mes });
+    const eg  = await query(`SELECT NVL(SUM(monto),0) AS "total" FROM egresos  WHERE usuario_id=:userId AND TO_CHAR(fecha,'YYYY-MM')=:mes`, { userId, mes });
+    ctx.resumenMes = { balance: (Number(ing.rows?.[0]?.total) || 0) - (Number(eg.rows?.[0]?.total) || 0) };
+  } catch (_) { /* no bloquea */ }
+  return ctx;
+}
+
 /**
  * Consulta Oracle y devuelve un resumen completo del usuario para pasar como
  * contexto al modelo de IA.
@@ -851,6 +881,106 @@ function addPlatformTip(topic) {
 }
 
 /**
+ * Busca si la pregunta menciona el nombre de una entidad específica del usuario
+ * (parcela, trabajador, equipo, campaña) y devuelve su ficha detallada.
+ */
+function findNamedEntity(q, dbContext) {
+  if (!dbContext) return null;
+  const fmt = (n) => `$${Number(n || 0).toLocaleString('es-ES')}`;
+
+  for (const p of (dbContext.parcelas || [])) {
+    if (p.nombre && q.includes(normalize(p.nombre))) {
+      const icon = normalize(p.estado || '') === 'activa' ? '🟢'
+                 : normalize(p.estado || '').includes('preparac') ? '🟡' : '⚫';
+      return `🌿 **${p.nombre}**\n- Cultivo: ${p.cultivo || 'sin definir'}\n- Superficie: ${p.hectareas} ha\n- Estado: ${icon} ${p.estado}`;
+    }
+  }
+
+  for (const t of (dbContext.trabajadores || [])) {
+    const firstName = normalize(t.nombre || '').split(' ')[0];
+    if (firstName.length > 2 && q.includes(firstName)) {
+      const estIcon = normalize(t.estado || '').includes('activ') ? '🟢' : '🔴';
+      return `👷 **${t.nombre}**\n- Cargo: ${t.cargo || '?'}\n- Salario: ${t.salario ? fmt(t.salario) : '?'}/mes\n- Estado: ${estIcon} ${t.estado}`;
+    }
+  }
+
+  for (const m of (dbContext.maquinaria || [])) {
+    const words = normalize(m.nombre || '').split(' ').filter(w => w.length > 3);
+    if (words.some(w => q.includes(w))) {
+      const estIcon = normalize(m.estado || '') === 'operativo' ? '🟢' : '🟡';
+      const prox = m.proximoMantenimiento ? `\n- Próx. mant: ${String(m.proximoMantenimiento).slice(0, 10)}` : '';
+      return `🚜 **${m.nombre}** (${m.tipo || '?'})\n- Estado: ${estIcon} ${m.estado}${prox}`;
+    }
+  }
+
+  for (const c of (dbContext.campanas || [])) {
+    if (c.nombre && q.includes(normalize(c.nombre))) {
+      const roi = Number(c.ingresoTotal) - Number(c.inversionTotal);
+      return `🌾 **${c.nombre}**\n- Hectáreas: ${c.hectareas || '?'} ha\n- Inversión: ${fmt(c.inversionTotal)}\n- Ingresos: ${fmt(c.ingresoTotal)}\n- ROI: ${roi >= 0 ? '+' : ''}${fmt(roi)}`;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Responde preguntas de totales (hectáreas, trabajadores, nómina) y filtros
+ * financieros por categoría (insumos, personal, mantenimiento, operación).
+ */
+function buildSpecificResponse(q, dbContext) {
+  if (!dbContext) return null;
+  const fmt = (n) => `$${Number(n || 0).toLocaleString('es-ES')}`;
+  const has = (...words) => words.some(w => q.includes(w));
+
+  // Total hectáreas
+  if (has('cuanta', 'total', 'suma') && has('hectarea', ' ha')) {
+    const ps = dbContext.parcelas || [];
+    if (ps.length) {
+      const total = ps.reduce((s, p) => s + Number(p.hectareas || 0), 0);
+      return `Tienes **${total.toFixed(1)} ha en total** en ${ps.length} parcela(s):\n${ps.map(p => `- ${p.nombre}: ${p.hectareas} ha (${p.estado})`).join('\n')}`;
+    }
+  }
+
+  // Total trabajadores / nómina
+  if (has('cuantos', 'cuanto', 'total') && has('trabajador', 'empleado', 'personal', 'nomina', 'salario')) {
+    const ts = dbContext.trabajadores || [];
+    if (ts.length) {
+      const activos = ts.filter(t => normalize(t.estado || '').includes('activ')).length;
+      const nomina = ts.reduce((s, t) => s + Number(t.salario || 0), 0);
+      return `👷 **${ts.length} trabajador(es)** — ${activos} activos\n💰 Nómina total: **${fmt(nomina)}/mes**`;
+    }
+  }
+
+  // Total equipos
+  if (has('cuantos', 'cuanto', 'total') && has('equipo', 'maquinaria', 'tractor', 'maquina')) {
+    const ms = dbContext.maquinaria || [];
+    if (ms.length) {
+      const op = ms.filter(m => normalize(m.estado || '') === 'operativo').length;
+      return `🚜 **${ms.length} equipo(s)** — ${op} operativo(s), ${ms.length - op} en mantenimiento o fuera de servicio.`;
+    }
+  }
+
+  // Egresos por categoría
+  const catMap = [
+    ['insumo', 'Insumos'], ['operacion', 'Operación'],
+    ['mantenimiento', 'Mantenimiento'], ['personal', 'Personal'],
+  ];
+  if (has('gaste', 'costo', 'egreso', 'gasto') && Array.isArray(dbContext.egresos) && dbContext.egresos.length) {
+    const match = catMap.find(([k]) => q.includes(k));
+    if (match) {
+      const [, catName] = match;
+      const filtered = dbContext.egresos.filter(e => normalize(e.tipo || '') === normalize(catName));
+      if (filtered.length) {
+        const total = filtered.reduce((s, e) => s + Number(e.monto || 0), 0);
+        return `💰 **Egresos en ${catName}: ${fmt(total)}** (${filtered.length} registro(s))\n${filtered.slice(0, 5).map(e => `- ${e.concepto}: ${fmt(e.monto)}`).join('\n')}`;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Chatbot heurístico: responde usando knowledge.json + Wikipedia + datos de la BD.
  * Incluye contexto conversacional, alertas proactivas, respuestas combinadas,
  * detección de urgencia y sugerencias contextuales.
@@ -965,6 +1095,18 @@ async function buildHeuristicChat({ messages, dbContext }) {
   // --- Plan semanal de acción ---
   if (has('que hago', 'que debo hacer', 'plan semana', 'prioridades', 'que tareas', 'acciones esta semana', 'recomiendas hacer', 'por donde empiezo')) {
     return buildWeeklyActions(dbContext) + '\n' + buildSuggestions(null);
+  }
+
+  // --- Entidad específica por nombre (ej: "¿cómo está la Parcela Norte?") ---
+  if (dbContext) {
+    const entityResponse = findNamedEntity(q, dbContext);
+    if (entityResponse) return entityResponse + buildSuggestions(detectTopic(q));
+  }
+
+  // --- Totales y filtros específicos (ej: "¿cuántas hectáreas tengo en total?") ---
+  if (dbContext) {
+    const specificResponse = buildSpecificResponse(q, dbContext);
+    if (specificResponse) return specificResponse + buildSuggestions(detectTopic(q));
   }
 
   // --- Detección de urgencia ---
@@ -1154,6 +1296,16 @@ async function openAiAdvice({ question, context }) {
 }
 
 export const aiService = {
+  async getAlerts({ userId }) {
+    if (!userId) return [];
+    try {
+      const ctx = await fetchAlertContext(userId);
+      return detectProactiveAlerts(ctx);
+    } catch (_) {
+      return [];
+    }
+  },
+
   async getAdvice({ user, question, context }) {
     const provider = (env.AI_PROVIDER || 'heuristic').toLowerCase();
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
+import { fmtDate } from '../../utils/fmt.js';
 
 const RiegoTable = ({ riego, parcelasVencidas = 0, diasLimite = 7, onAdd, onEdit, onDelete }) => (
   <div className="am-space-6">
@@ -70,8 +71,8 @@ const RiegoTable = ({ riego, parcelasVencidas = 0, diasLimite = 7, onAdd, onEdit
                 <td>{item.parcela}</td>
                 <td>{item.tipo}</td>
                 <td>{item.consumoAgua}</td>
-                <td>{item.ultimoRiego}</td>
-                <td>{item.proximoRiego}</td>
+                <td>{fmtDate(item.ultimoRiego)}</td>
+                <td>{fmtDate(item.proximoRiego)}</td>
                 <td className="am-actions">
                   <button className="primary" onClick={() => onEdit(item)}>Editar</button>
                   <button className="danger" onClick={() => onDelete(item.id)}>Eliminar</button>
