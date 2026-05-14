@@ -4,32 +4,100 @@
 
 **Interfaz web de gestión agrícola construida con React 19 + Vite**
 
-[![React](https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-7.2-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.1-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![React Router](https://img.shields.io/badge/React_Router-7.11-CA4245?style=for-the-badge&logo=reactrouter&logoColor=white)](https://reactrouter.com/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-7-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![React Router](https://img.shields.io/badge/React_Router-7-CA4245?style=for-the-badge&logo=reactrouter&logoColor=white)](https://reactrouter.com/)
 
 </div>
 
 ---
 
-## Descripción
+## ¿Qué es esta parte?
 
-SPA (Single Page Application) que consume la API REST del Backend de AgroManager Oracle. Provee el dashboard administrativo, el panel del propietario, una landing page pública y un asistente de IA flotante (AgroBot). El Frontend es idéntico al de la versión MySQL — toda la migración a Oracle vive exclusivamente en el Backend.
+El Frontend es la interfaz visual de AgroManager Pro. Es lo que el usuario ve y usa: el panel de control, los formularios, los reportes y el chatbot. Se conecta al Backend a través de una API REST y muestra toda la información de la finca en tiempo real.
+
+Es una aplicación web moderna de página única (SPA) que funciona desde el navegador sin recargas.
 
 ---
 
-## Stack
+## Páginas y pantallas
 
-| Paquete | Versión | Uso |
-|---------|---------|-----|
-| `react` + `react-dom` | 19.2 | UI framework |
-| `react-router-dom` | 7.11 | Routing del lado del cliente |
-| `tailwindcss` | 4.1 | Estilos utilitarios |
-| `lucide-react` | 0.553 | Librería de iconos |
-| `jspdf` | 2.5 | Exportación de remisiones en PDF |
-| `sweetalert2` | 11.15 | Modales y alertas de confirmación |
-| `vite` + `@vitejs/plugin-react-swc` | 7.2 / 4.2 | Build tool con Fast Refresh via SWC |
+### 🏠 Landing Page — Página de inicio pública
+La primera pantalla que ve cualquier visitante. Incluye:
+- Carrusel de imágenes del sistema
+- Presentación de las funcionalidades principales
+- Estadísticas del producto
+- Historial de novedades y mejoras recientes del sistema
+- Acceso al login
+
+### 🔐 Login — Inicio de sesión
+Formulario de autenticación con email y contraseña. Una vez autenticado, el sistema redirige automáticamente según el rol del usuario (administrador o propietario). Incluye una animación de tractor durante la carga.
+
+### 📊 Panel de Administración — Dashboard principal
+El corazón de la aplicación. Desde aquí se accede a todos los módulos de gestión a través de un sidebar lateral:
+
+| Módulo | Qué hace |
+|--------|----------|
+| **Dashboard** | Resumen general: parcelas activas, balance del mes, maquinaria, campañas y alertas importantes |
+| **Parcelas** | Grid visual de todos los lotes con estado, cultivo y superficie |
+| **Trabajadores** | Tabla de personal con control de salarios y liquidación de nómina |
+| **Finanzas** | Registro y visualización de ingresos y egresos con totales por mes |
+| **Maquinaria** | Inventario de equipos con fechas de mantenimiento y estado operativo |
+| **Campañas** | Listado de campañas de cosecha con acceso al detalle de cada una |
+| **Semillas** | Inventario de semillas por tipo y proveedor |
+| **Plagas** | Registro de incidentes con nivel de severidad y tratamiento aplicado |
+| **Riego** | Programación de turnos de riego y consumo de agua por parcela |
+| **Fertilizantes** | Registro de aplicaciones y stock disponible por producto |
+| **Reportes** | Exportación de información en PDF |
+| **🤖 AgroBot** | Chatbot integrado en el dashboard para consultas rápidas |
+
+### 🌾 Detalle de Campaña
+Pantalla completa dedicada a una campaña de cosecha específica. Incluye:
+- **Resumen financiero**: inversión, ingresos y rendimiento por hectárea calculados automáticamente
+- **Diario de cosecha**: registro día a día de hectáreas cortadas y bultos producidos
+- **Remisiones de transporte**: formulario para documentar cada despacho con datos del conductor, vehículo, placa, origen, destino y valor del flete
+- **Firma digital**: espacio para capturar firmas del conductor y del propietario
+- **Exportación a PDF**: genera el documento de remisión listo para imprimir o compartir
+
+### 👤 Panel del Propietario
+Pantalla exclusiva para el rol de propietario. Permite:
+- Ver y registrar los usuarios del sistema
+- Publicar novedades, mejoras y correcciones que aparecen en la Landing Page
+
+### 📋 Cambios
+Feed público con el historial de actualizaciones del sistema, filtrable por tipo: Novedad, Mejora o Corrección.
+
+---
+
+## 🤖 AgroBot — Panel de chat
+
+En la esquina inferior derecha de la pantalla hay un botón circular verde fijo. Al hacer clic se abre un panel de chat completo (380×540 px) con animación de entrada. En móviles ocupa toda la pantalla.
+
+El panel tiene tres zonas:
+- **Cabecera verde** con el nombre AgroBot, el subtítulo "Asistente agrícola" y el botón de cerrar
+- **Área de mensajes** con los globos de conversación — los mensajes del usuario en azul/morado a la derecha, las respuestas del bot en blanco a la izquierda, cada uno con su ícono
+- **Barra de entrada** con campo de texto y botón de enviar
+
+Otras características:
+- Indicador de escritura animado (tres puntos) mientras el bot procesa
+- Envío con la tecla **Enter**, nueva línea con **Shift + Enter**
+- Las respuestas del bot renderizan texto en negrita
+- Los últimos 20 mensajes se envían con cada pregunta para mantener el contexto
+
+---
+
+## Tecnologías utilizadas
+
+| Tecnología | Para qué se usa |
+|------------|-----------------|
+| **React 19** | Construcción de toda la interfaz de usuario |
+| **Vite** | Herramienta de construcción y servidor de desarrollo rápido |
+| **Tailwind CSS 4** | Sistema de estilos utilitarios para el diseño visual |
+| **React Router 7** | Navegación entre páginas sin recarga |
+| **Lucide React** | Iconos modernos usados en toda la interfaz |
+| **jsPDF** | Generación de documentos PDF desde el navegador |
+| **SweetAlert2** | Modales de confirmación y alertas visuales amigables |
 
 ---
 
@@ -38,165 +106,61 @@ SPA (Single Page Application) que consume la API REST del Backend de AgroManager
 ```
 Frontend/
 ├── public/
-│   ├── Logo AgroManager.png        # Logotipo principal
-│   └── hero/                       # Imágenes del carrusel (Landing)
-│       ├── AgroManager1.png
-│       ├── AgroManager2.png
-│       └── AgroManager3.png
+│   ├── Logo AgroManager.png        → Logotipo de la plataforma
+│   └── hero/                       → Imágenes del carrusel en Landing
 │
 └── src/
-    ├── App.jsx                     # Definición de rutas
-    ├── main.jsx                    # Entry point React DOM
+    ├── App.jsx                     → Definición de todas las rutas
+    ├── main.jsx                    → Punto de entrada de la app
     │
-    ├── views/                      # Páginas completas
-    │   ├── Landing.jsx             # Homepage pública
-    │   ├── Login.jsx               # Autenticación
-    │   ├── CropManagementDashboard.jsx  # Panel admin
-    │   ├── CampanaDetail.jsx       # Detalle de campaña + diario + remisiones
-    │   ├── OwnerDashboard.jsx      # Panel del propietario
-    │   └── Cambios.jsx             # Página pública de changelog
+    ├── views/                      → Páginas completas
+    │   ├── Landing.jsx             → Homepage pública
+    │   ├── Login.jsx               → Inicio de sesión
+    │   ├── CropManagementDashboard.jsx  → Panel principal del admin
+    │   ├── CampanaDetail.jsx       → Detalle de campaña + diario + remisiones
+    │   ├── OwnerDashboard.jsx      → Panel del propietario
+    │   └── Cambios.jsx             → Historial de cambios del sistema
     │
     ├── components/
-    │   ├── ChatBot.jsx             # Chatbot flotante (FAB)
-    │   ├── TractorLoader.jsx       # Animación de carga
-    │   └── sections/              # Secciones del dashboard
+    │   ├── ChatBot.jsx             → Chatbot flotante AgroBot
+    │   ├── TractorLoader.jsx       → Animación de carga
+    │   ├── AiAssistantCard.jsx     → Chat embebido en el dashboard
+    │   └── sections/              → Secciones del panel de admin
     │       ├── Navigation.jsx
     │       ├── DashboardOverview.jsx
-    │       ├── AiAssistantCard.jsx
     │       ├── ParcelasGrid.jsx
     │       ├── TrabajadoresTable.jsx
     │       ├── FinanzasView.jsx
     │       ├── MaquinariaGrid.jsx
     │       ├── CampanasTable.jsx
     │       ├── SemillasTable.jsx
+    │       ├── SiembrasTable.jsx
     │       ├── PlagasGrid.jsx
     │       ├── RiegoTable.jsx
     │       ├── FertilizantesTable.jsx
     │       └── ReportesGrid.jsx
     │
     ├── services/
-    │   ├── api.js                  # Cliente HTTP con todas las llamadas a la API
-    │   └── mockData.js             # Datos de prueba / fallback
+    │   ├── api.js                  → Todas las llamadas a la API del Backend
+    │   └── reportGenerator.js      → Lógica de generación de PDF
     │
-    └── styles/                    # CSS por página/componente
-        ├── index.css
+    └── styles/                    → CSS complementario por página
         ├── admin.css
         ├── Landing.css
         ├── Login.css
-        ├── OwnerDashboard.css
-        ├── Cambios.css
         ├── ChatBot.css
-        └── TractorLoader.css
+        └── ...
 ```
 
 ---
 
-## Rutas
+## Rutas de la aplicación
 
-| Ruta | Componente | Acceso | Descripción |
-|------|-----------|--------|-------------|
-| `/` | `Landing` | Público | Homepage con carrusel, features y changelog |
-| `/login` | `Login` | Público | Formulario de autenticación |
-| `/admin` | `CropManagementDashboard` | Admin | Panel principal con todos los módulos |
-| `/admin/campanas/:id` | `CampanaDetail` | Admin | Detalle de campaña, diario y remisiones |
-| `/owner` | `OwnerDashboard` | Owner | Gestión de usuarios y publicación de novedades |
-| `/cambios` | `Cambios` | Público | Historial de cambios filtrable |
-
-El rol del usuario (obtenido en login) determina la redirección: `owner` → `/owner`, cualquier otro → `/admin`.
-
----
-
-## Vistas en detalle
-
-### Landing
-- Carrusel hero automático (3 slides, 4.5 s)
-- 8 tarjetas de funcionalidades
-- Estadísticas del producto
-- Banner con los últimos cambios del sistema
-- Menú hamburguesa responsive
-
-### Login
-- Formulario email + contraseña
-- Animación TractorLoader durante la autenticación
-- Redirección basada en rol tras login exitoso
-
-### CropManagementDashboard
-Dashboard central con 11 secciones accesibles desde el sidebar:
-
-| # | Sección | Qué muestra |
-|---|---------|-------------|
-| 1 | Dashboard | KPIs, alertas, últimas transacciones, AgroBot |
-| 2 | Parcelas | Grid de lotes con estado, cultivo e inversión |
-| 3 | Trabajadores | Tabla de personal con liquidación de nómina |
-| 4 | Finanzas | Ingresos y egresos con totales mensuales |
-| 5 | Maquinaria | Inventario de equipos y mantenimientos |
-| 6 | Campañas | Listado de campañas con acceso al detalle |
-| 7 | Semillas | Inventario de semillas por tipo y proveedor |
-| 8 | Plagas | Registro de incidentes con severidad y tratamiento |
-| 9 | Riego | Turnos de riego y consumo de agua |
-| 10 | Fertilizantes | Aplicaciones por parcela y costo |
-| 11 | Reportes | Vista de reportes (en desarrollo) |
-
-### CampanaDetail
-- Resumen financiero y productivo de la campaña
-- **Diario de cosecha**: CRUD de registros diarios (fecha, hectáreas, bultos)
-- **Remisiones**: Formulario de despacho con info del conductor, vehículo, ruta, carga y fletes
-- Firma digital de conductor y propietario en canvas
-- Exportación a PDF con jsPDF
-
-### OwnerDashboard
-- Registro y listado de usuarios del sistema
-- Publicación de novedades, mejoras y correcciones en el changelog
-
-### Cambios
-- Feed filtrable por tipo: Todo / Novedad / Mejora / Corrección
-
----
-
-## Componentes reutilizables
-
-### `ChatBot.jsx`
-Botón flotante (FAB) en la esquina inferior derecha que abre una ventana de chat con AgroBot. Mantiene historial de conversación. Envía mensajes con `Enter`, nueva línea con `Shift+Enter`.
-
-### `TractorLoader.jsx`
-Overlay de carga con animación de tractor cruzando la pantalla. Acepta `message`, `visible` y `onFinish` (callback al cerrar).
-
-### `AiAssistantCard.jsx`
-Chat embebido dentro del dashboard (no flotante). Misma lógica que `ChatBot` pero en línea con el layout.
-
-### `Navigation.jsx`
-Sidebar con 11 botones de sección. Recibe `activeSection` y `setActiveSection` como props.
-
----
-
-## Servicio API (`services/api.js`)
-
-Cliente HTTP centralizado. Detecta el entorno automáticamente e inyecta el token JWT desde `localStorage` en cada petición.
-
-**Módulos disponibles:**
-
-| Módulo | Funciones |
-|--------|-----------|
-| Auth | `login` |
-| Parcelas | `fetchParcelas`, `crearParcela`, `actualizarParcela`, `eliminarParcela` |
-| Trabajadores | `fetchTrabajadores`, `crearTrabajador`, `actualizarTrabajador`, `eliminarTrabajador` |
-| Finanzas | `fetchFinanzas`, `crearIngreso`, `crearEgreso` |
-| Maquinaria | `fetchMaquinaria`, `crearMaquinaria`, `actualizarMaquinaria`, `eliminarMaquinaria` |
-| Campañas | `fetchCampanas`, `fetchCampana`, `crearCampana`, `actualizarCampana`, `eliminarCampana` |
-| Diario | `fetchCampanaDiario`, `crearCampanaDia`, `actualizarCampanaDia`, `eliminarCampanaDia` |
-| Remisiones | `fetchRemisiones`, `crearRemision`, `actualizarRemision`, `eliminarRemision` |
-| Semillas | `fetchSemillas`, `crearSemilla`, `actualizarSemilla`, `eliminarSemilla` |
-| Plagas | `fetchPlagas`, `crearPlaga`, `actualizarPlaga`, `eliminarPlaga` |
-| Riego | `fetchRiego`, `crearRiego`, `actualizarRiego`, `eliminarRiego` |
-| Cambios | `fetchCambios`, `crearCambio` |
-| IA | `pedirConsejoIA`, `enviarMensajeChat` |
-| Usuarios | `fetchUsuarios`, `crearUsuario` |
-
----
-
-## Convenciones de estilos
-
-- **Tailwind CSS v4** para clases utilitarias en componentes
-- **CSS por módulo** en `styles/` para estilos globales o animaciones complejas (ej. TractorLoader)
-- **Estilos inline** para valores dinámicos y computados en runtime
-- Paleta principal: emerald (activo), slate (fondos), red (alertas), blue (info), amber (advertencias)
+| Ruta | Pantalla | Acceso |
+|------|----------|--------|
+| `/` | Landing — homepage pública | Todos |
+| `/login` | Formulario de inicio de sesión | Todos |
+| `/admin` | Panel principal de gestión | Solo admin |
+| `/admin/campanas/:id` | Detalle de campaña específica | Solo admin |
+| `/owner` | Panel del propietario | Solo propietario |
+| `/cambios` | Historial de cambios | Todos |

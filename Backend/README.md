@@ -1,11 +1,11 @@
 <div align="center">
 
-# AgroManager Pro — Backend (Oracle Edition)
+# AgroManager Pro — Backend
 
-**API REST para gestión agrícola construida con Node.js + Express + Oracle Autonomous Database**
+**API REST y motor de base de datos Oracle para la plataforma de gestión agrícola**
 
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-[![Express](https://img.shields.io/badge/Express-4.19-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
+[![Express](https://img.shields.io/badge/Express-4-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
 [![Oracle](https://img.shields.io/badge/Oracle_Cloud-F80000?style=for-the-badge&logo=oracle&logoColor=white)](https://www.oracle.com/cloud/)
 [![JWT](https://img.shields.io/badge/JWT-Auth-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white)](https://jwt.io/)
 
@@ -13,31 +13,145 @@
 
 ---
 
-## Descripción
+## ¿Qué es esta parte?
 
-Versión de la API de AgroManager migrada a **Oracle Autonomous Database** (Oracle Cloud). Mantiene la misma arquitectura de capas (Routes → Controllers → Services → DB) y los mismos endpoints que la versión MySQL. La migración afecta exclusivamente a la capa de datos: driver, queries, tipos y helpers.
-
-**Base URL:** `http://localhost:3001` (desarrollo) / `https://agromanager.pro` (producción)  
-**Prefijos de ruta:** `/api/v1/...` y `/...` (para reverse proxy Nginx)
+El Backend es el servidor que da vida a toda la plataforma. Recibe las peticiones del Frontend, las procesa, consulta la base de datos Oracle Cloud y devuelve la información. También contiene el motor del asistente AgroBot y toda la lógica de negocio del sistema.
 
 ---
 
-## Stack
+## Módulos de la API
 
-| Paquete | Versión | Uso |
-|---------|---------|-----|
-| `express` | 4.19 | Framework HTTP |
-| `oracledb` | 6.5 | Driver Oracle en modo thin (sin Instant Client) |
-| `jsonwebtoken` | 9.0 | Firma y verificación de tokens JWT |
-| `bcryptjs` | 2.4 | Hashing de contraseñas |
-| `helmet` | 7.1 | Headers de seguridad HTTP |
-| `cors` | 2.8 | Control de CORS |
-| `morgan` | 1.10 | Logging de requests HTTP |
-| `compression` | 1.7 | Compresión gzip de respuestas |
-| `dotenv` | 16.4 | Carga de variables de entorno |
-| `nodemon` | 3.0 | Auto-reload en desarrollo |
+El servidor expone una API REST organizada por módulos. Cada módulo maneja un dominio específico de la operación agrícola:
 
-> `oracledb` ≥ 6 funciona en **thin mode** (puro JS). Se conecta a Oracle Autonomous DB usando mTLS con wallet, sin necesidad de instalar Oracle Instant Client.
+### 🔐 Autenticación
+Registro y verificación de identidad de los usuarios. Genera un token seguro (JWT) que el Frontend usa en cada petición para confirmar quién es el usuario y qué puede hacer.
+
+### 🌿 Parcelas
+Gestión completa de los lotes o parcelas de la finca: consulta, creación, edición y eliminación. Cada parcela lleva registro de su superficie, cultivo actual y estado.
+
+### 🌱 Siembras
+Control del ciclo de siembra: qué variedad se sembró, en qué parcela, cuándo y con qué proveedor. Incluye el registro de inversiones por siembra para calcular el costo real de producción.
+
+### 👷 Trabajadores
+Gestión del personal: cargos, salarios y horas laboradas. El módulo incluye el cálculo automático de liquidaciones de nómina proporcionales a las horas trabajadas en el mes.
+
+### 🚜 Maquinaria
+Inventario y seguimiento de equipos agrícolas. Registra el tipo de maquinaria, su estado operativo y las fechas de mantenimiento para evitar paros inesperados.
+
+### 🌾 Campañas
+Seguimiento de campañas de cosecha de principio a fin. Incluye sub-módulos para:
+- **Diario de cosecha**: registro diario de avance (hectáreas cortadas, bultos producidos)
+- **Remisiones**: documentos de despacho con datos del conductor, vehículo, ruta, carga y valor del flete
+
+### 🐛 Plagas
+Registro de incidentes fitosanitarios con el tipo de plaga, cultivo afectado, nivel de severidad y tratamiento aplicado.
+
+### 💧 Riego
+Programación de riegos por parcela o siembra, con historial de fechas y consumo de agua.
+
+### 🧪 Fertilizantes
+Control de inventario de productos fertilizantes y registro de cada aplicación. El sistema descuenta el stock automáticamente y alerta cuando un producto se agota.
+
+### 🌱 Semillas
+Inventario de semillas disponibles por tipo, cantidad y proveedor.
+
+### 💰 Finanzas
+Registro de ingresos (ventas, subsidios) y egresos (insumos, operación, mantenimiento, personal) con resumen mensual automático.
+
+### 📊 Dashboard
+Cálculo y entrega de los indicadores clave del panel de control: parcelas activas, trabajadores, balance del mes, campañas en curso y siembras activas.
+
+### 📋 Cambios
+Gestión del historial de novedades y actualizaciones del sistema que se muestra en la Landing Page.
+
+### 👤 Usuarios / Propietario
+Administración de usuarios del sistema y gestión de roles (admin / propietario).
+
+### 🤖 IA — AgroBot
+El módulo más complejo. Expone dos endpoints:
+- **`/advice`** — Genera recomendaciones basadas en el contexto del panel (alertas, estadísticas)
+- **`/chat`** — Chat conversacional con memoria de historial
+
+---
+
+## 🤖 El Motor de AgroBot
+
+El servicio de IA (`ai.service.js`) contiene toda la inteligencia del chatbot. Su arquitectura permite funcionar en tres modos:
+
+### Modo Heurístico (sin costo, por defecto)
+El bot no necesita ninguna API externa. Funciona con tres fuentes:
+
+- **Base de conocimiento local** (`knowledge.json`): información técnica agrícola sobre plagas específicas (sogata, cogollero, piricularia, roya…), tipos de riego, fertilización NPK por cultivo, mantenimiento de maquinaria y más
+- **Wikipedia en español**: cuando el bot no encuentra la respuesta en su base de conocimiento, consulta Wikipedia automáticamente con un sistema de caché de 1 hora
+- **Datos reales de Oracle**: antes de responder, el bot consulta la base de datos para obtener el contexto real del usuario — sus parcelas, plagas, riegos, finanzas, maquinaria, trabajadores, fertilizantes y semillas
+
+El bot combina las tres fuentes en una sola respuesta: muestra los datos reales del usuario y al mismo tiempo da el consejo técnico relacionado.
+
+### Modo OpenAI / Anthropic (opcional)
+Si se configura una clave de API, el bot usa un modelo de lenguaje externo (GPT-4o-mini o Claude Sonnet) para respuestas en lenguaje natural completo.
+
+### Capacidades del bot en cualquier modo
+- Detecta si la pregunta es sobre datos del usuario o conocimiento técnico general
+- Genera un **plan de acción semanal** priorizado según las alertas reales: riegos vencidos, plagas urgentes, mantenimientos próximos, balance negativo
+- Recuerda el contexto de mensajes anteriores para resolver referencias implícitas
+- Responde de forma natural a saludos, despedidas, agradecimientos y preguntas casuales
+- Acepta texto con o sin tildes, mayúsculas o minúsculas
+
+---
+
+## Base de Datos Oracle — Lo que hay detrás
+
+El esquema de base de datos (`db/schema.sql`) va mucho más allá de tablas simples. Aprovecha las capacidades avanzadas de Oracle con objetos que automatizan la operación:
+
+### Tablas (20)
+Organizadas en capas: catálogos de referencia (roles, estados, tipos de semilla, tipos de plaga, tipos de riego, tipos de maquinaria), entidades principales (usuarios, parcelas, trabajadores, maquinaria, proveedores) y tablas transaccionales (ingresos, egresos, campañas, siembras, riegos, plagas, fertilizantes, remisiones).
+
+### Triggers (6)
+Reglas automáticas que se ejecutan sin intervención del usuario:
+- Descuento de stock al registrar una aplicación de fertilizante — si no hay suficiente, rechaza la operación
+- Cambio automático de estado entre "Disponible" y "Agotado" según el stock
+- Validación de fechas en el diario de cosecha — no permite registros fuera del rango de la campaña
+- Auditoría de cambios en usuarios, parcelas y trabajadores
+
+### Vistas (7)
+Consultas precalculadas que el Backend usa para mostrar datos complejos eficientemente:
+- Dashboard general con todos los KPIs del usuario
+- Resumen financiero agrupado por mes
+- Resumen por campaña con producción total y rendimiento en bultos/hectárea
+- Alerta de fertilizantes con stock por debajo del mínimo
+- Horas trabajadas por empleado (total y mes actual)
+- Siembras con inversión acumulada y uso de fertilizantes
+- Maquinaria con detalle de tipo, estado y operadores activos
+
+### Procedimientos almacenados (5)
+Operaciones complejas ejecutadas directamente en la base de datos:
+- Aplicación de fertilizantes en lote (valida stock antes de proceder)
+- Registro de jornadas laborales en lote con `FORALL`
+- Cierre completo de una campaña (actualiza estados de siembras y parcelas automáticamente)
+- Liquidación de nómina mensual proporcional a horas trabajadas
+- Sincronización del estado del stock de todos los fertilizantes del usuario
+
+### Funciones (6)
+Cálculos especializados reutilizables en toda la base de datos:
+- Horas trabajadas por empleado en cualquier rango de fechas
+- Balance financiero neto en un período
+- Rendimiento de campaña en bultos por hectárea cosechada
+- Costo total de nómina de un mes
+- Cantidad de parcelas con riego vencido hace más de N días
+- Fertilizante con mayor consumo en un período
+
+### Tipos y colecciones PL/SQL (4)
+Estructuras de datos propias que permiten pasar listas de registros a los procedimientos en una sola operación, mejorando el rendimiento.
+
+---
+
+## Seguridad
+
+- Autenticación mediante **JWT** en cada petición protegida
+- Contraseñas almacenadas con **bcrypt** — nunca en texto plano
+- Cabeceras HTTP protegidas con **Helmet**
+- CORS configurado para aceptar solo orígenes autorizados
+- Conexión a Oracle mediante **wallet mTLS** — estándar de Oracle Autonomous Database
 
 ---
 
@@ -45,256 +159,37 @@ Versión de la API de AgroManager migrada a **Oracle Autonomous Database** (Orac
 
 ```
 Backend/
-├── db/
-│   └── schema.sql              # DDL Oracle completo: tablas, triggers, tipos, vistas y procedimiento PL/SQL
+├── src/
+│   ├── app.js                  → Configuración del servidor Express
+│   ├── server.js               → Punto de entrada, inicializa el pool Oracle
+│   │
+│   ├── config/
+│   │   ├── db.js               → Pool de conexiones Oracle
+│   │   └── env.js              → Variables de entorno
+│   │
+│   ├── routes/                 → Un archivo por módulo de la API
+│   │   ├── ai.routes.js        → /ai/advice y /ai/chat (AgroBot)
+│   │   ├── auth.routes.js
+│   │   ├── parcelas.routes.js
+│   │   ├── siembras.routes.js
+│   │   ├── campanas.routes.js
+│   │   ├── fertilizantes.routes.js
+│   │   ├── dashboard.routes.js
+│   │   └── ...demás módulos
+│   │
+│   ├── controllers/            → Reciben la petición y delegan al service
+│   ├── services/               → Lógica de negocio y consultas Oracle
+│   │   └── ai.service.js       → Motor completo del chatbot
+│   │
+│   ├── middleware/
+│   │   ├── requireAuth.js      → Valida JWT en rutas protegidas
+│   │   ├── asyncHandler.js     → Manejo de errores async
+│   │   └── errorHandler.js     → Respuesta de error centralizada
+│   │
+│   └── data/
+│       └── knowledge.json      → Base de conocimiento agrícola del bot
 │
-└── src/
-    ├── app.js                  # Configuración Express (middleware, rutas, error handler)
-    ├── server.js               # Entry point: HTTP server + graceful shutdown
-    │
-    ├── config/
-    │   ├── env.js              # Exporta objeto `env` tipado desde process.env (incluye wallet)
-    │   └── db.js               # Pool oracledb + helpers: query, insertReturningId, toDate, lowercaseRow
-    │
-    ├── middleware/
-    │   ├── asyncHandler.js     # Wrapper para capturar errores async automáticamente
-    │   ├── errorHandler.js     # Handler global de errores → respuesta JSON
-    │   ├── notFound.js         # 404 catch-all
-    │   ├── requireAuth.js      # Valida JWT y adjunta `req.user` (id, rol)
-    │   └── requireOwner.js     # Verifica que `req.user.rol === 'owner'`
-    │
-    ├── routes/
-    │   ├── index.js            # Agrega todas las rutas
-    │   ├── health.routes.js
-    │   ├── auth.routes.js
-    │   ├── dashboard.routes.js # Dashboard: V_DASHBOARD y V_RESUMEN_FINANCIERO
-    │   ├── parcelas.routes.js
-    │   ├── trabajadores.routes.js
-    │   ├── finanzas.routes.js
-    │   ├── maquinaria.routes.js
-    │   ├── semillas.routes.js
-    │   ├── plagas.routes.js
-    │   ├── riego.routes.js
-    │   ├── campanas.routes.js  # Incluye /diario y /remisiones anidados
-    │   ├── cambios.routes.js
-    │   ├── fertilizantes.routes.js # Incluye stock, usos y aplicación en lote
-    │   ├── owner.routes.js
-    │   └── ai.routes.js
-    │
-    ├── controllers/            # Reciben req/res, delegan lógica al servicio
-    │   ├── dashboard.controller.js
-    │   └── [un controller por dominio]
-    │
-    ├── services/               # Lógica de negocio y queries Oracle SQL
-    │   ├── ai.service.js       # Motor de IA (heurístico / OpenAI / Anthropic)
-    │   ├── dashboard.service.js # Consulta vistas V_DASHBOARD y V_RESUMEN_FINANCIERO
-    │   └── [un service por dominio]
-    │
-    ├── data/
-    │   └── knowledge.json      # Base de conocimiento agrícola para el modo heurístico
-    │
-    └── scripts/
-        ├── test-db.js          # Verifica conectividad a Oracle
-        └── seed-owner.js       # Crea el usuario owner inicial
+└── db/
+    └── schema.sql              → DDL completo: tablas, índices, triggers,
+                                  vistas, tipos PL/SQL, procedimientos y funciones
 ```
-
----
-
-## Diferencias respecto a la versión MySQL
-
-| Aspecto | MySQL | Oracle (esta versión) |
-|---------|-------|-----------------------|
-| Driver | `mysql2` | `oracledb` (thin mode) |
-| Placeholders | `?` posicional | `:nombre` nombrado |
-| Auto-increment | `INT AUTO_INCREMENT` | `NUMBER GENERATED BY DEFAULT AS IDENTITY` |
-| Tipos texto | `VARCHAR`, `TEXT` | `VARCHAR2`, `CLOB` |
-| Default fecha | `DEFAULT CURRENT_TIMESTAMP` | `DEFAULT SYSTIMESTAMP` |
-| `ON UPDATE` | Nativo en columna | Trigger `BEFORE UPDATE` por tabla |
-| Paginación | `LIMIT n` | `FETCH FIRST n ROWS ONLY` |
-| Insert + id | `result.insertId` | `RETURNING id INTO :outId` |
-| Affected rows | `result.affectedRows` | `result.rowsAffected` |
-| Nombres columnas | tal cual | Mayúsculas por defecto → se pasan por `lowercaseRow()` |
-
----
-
-## Endpoints
-
-Todos los endpoints (salvo los marcados como Público) requieren header:
-```
-Authorization: Bearer <token>
-```
-
-### Health
-| Método | Ruta | Descripción | Auth |
-|--------|------|-------------|------|
-| GET | `/health` | Estado del servidor (uptime, env) | Público |
-| GET | `/health/db` | Prueba conexión a Oracle | Público |
-
-### Auth
-| Método | Ruta | Descripción | Auth |
-|--------|------|-------------|------|
-| POST | `/auth/login` | Login → devuelve JWT + usuario | Público |
-
-### Parcelas
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/parcelas` | Listar parcelas del usuario |
-| POST | `/parcelas` | Crear parcela |
-| GET | `/parcelas/:id` | Obtener parcela |
-| PUT | `/parcelas/:id` | Actualizar parcela |
-| DELETE | `/parcelas/:id` | Eliminar parcela |
-
-### Trabajadores
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/trabajadores` | Listar trabajadores |
-| POST | `/trabajadores` | Crear trabajador |
-| PUT | `/trabajadores/:id` | Actualizar trabajador |
-| DELETE | `/trabajadores/:id` | Eliminar trabajador |
-
-### Finanzas
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/finanzas` | Obtener `{ ingresos, egresos }` del usuario |
-| POST | `/finanzas/ingresos` | Registrar ingreso |
-| POST | `/finanzas/egresos` | Registrar egreso |
-
-### Maquinaria
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/maquinaria` | Listar maquinaria |
-| POST | `/maquinaria` | Crear equipo |
-| PUT | `/maquinaria/:id` | Actualizar equipo |
-| DELETE | `/maquinaria/:id` | Eliminar equipo |
-
-### Semillas / Plagas / Riego
-Mismo patrón CRUD: `GET /`, `POST /`, `PUT /:id`, `DELETE /:id`
-
-### Campañas
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/campanas` | Listar campañas |
-| POST | `/campanas` | Crear campaña |
-| GET | `/campanas/:id` | Detalle de campaña |
-| PUT | `/campanas/:id` | Actualizar campaña |
-| DELETE | `/campanas/:id` | Eliminar campaña |
-| GET | `/campanas/:id/diario` | Logs diarios (acepta `?desde=&hasta=`) |
-| POST | `/campanas/:id/diario` | Agregar entrada al diario |
-| PUT | `/campanas/:id/diario/:entryId` | Editar entrada |
-| DELETE | `/campanas/:id/diario/:entryId` | Eliminar entrada |
-| GET | `/campanas/:id/remisiones` | Listar remisiones |
-| POST | `/campanas/:id/remisiones` | Crear remisión |
-| PUT | `/campanas/:id/remisiones/:remisionId` | Editar remisión |
-| DELETE | `/campanas/:id/remisiones/:remisionId` | Eliminar remisión |
-
-### Cambios (Changelog)
-| Método | Ruta | Auth | Descripción |
-|--------|------|------|-------------|
-| GET | `/cambios` | Público | Listar cambios (acepta `?limit=N`) |
-| POST | `/cambios` | Owner | Publicar novedad/mejora/corrección |
-
-### Dashboard (Vistas PL/SQL)
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/dashboard` | Resumen del usuario desde `V_DASHBOARD` (parcelas, trabajadores, finanzas del mes, campañas activas) |
-| GET | `/dashboard/financiero` | Ingresos y egresos agrupados por mes desde `V_RESUMEN_FINANCIERO` |
-
-### Fertilizantes
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/fertilizantes` | Listar fertilizantes |
-| POST | `/fertilizantes` | Registrar fertilizante |
-| GET | `/fertilizantes/stock-bajo` | Fertilizantes bajo mínimo desde `V_STOCK_BAJO` |
-| POST | `/fertilizantes/aplicar-lote` | Aplica lista de fertilizantes vía `sp_aplicar_fertilizantes` (colección PL/SQL) |
-| GET | `/fertilizantes/:id/usos` | Historial de usos de un fertilizante |
-| POST | `/fertilizantes/:id/usar` | Registra uso — dispara `trg_descontar_stock_fertilizante` |
-| PUT | `/fertilizantes/:id` | Actualizar fertilizante |
-| DELETE | `/fertilizantes/:id` | Eliminar fertilizante |
-
-### IA / AgroBot
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| POST | `/ai/advice` | Obtener recomendación puntual |
-| POST | `/ai/chat` | Chat multi-turno |
-
-### Owner
-| Método | Ruta | Auth | Descripción |
-|--------|------|------|-------------|
-| GET | `/owner/users` | Owner | Listar todos los usuarios |
-| POST | `/owner/users` | Owner | Crear nuevo usuario |
-
----
-
-## Base de datos
-
-### Tablas
-
-| Tabla | Descripción |
-|-------|-------------|
-| `usuarios` | Cuentas con rol (`admin` \| `owner`) y estado |
-| `parcelas` | Lotes con cultivo, hectáreas, estado e inversión |
-| `trabajadores` | Personal con cargo, salario y horas trabajadas |
-| `ingresos` | Registros de ventas/cobros ligados opcionalmente a una parcela |
-| `egresos` | Gastos con categoría (semillas, mano de obra, reparaciones…) |
-| `maquinaria` | Equipos con fechas de último y próximo mantenimiento |
-| `semillas` | Inventario de semillas por tipo, proveedor y costo |
-| `plagas` | Incidentes con severidad, cultivo afectado y tratamiento |
-| `riego` | Turnos de riego por parcela con consumo de agua |
-| `fertilizantes` | Aplicaciones por parcela, cantidad y costo |
-| `campanas` | Campañas de cosecha con financieros y producción agregada |
-| `campanas_diario` | Entradas diarias por campaña (hectáreas cortadas, bultos) |
-| `remisiones` | Documentos de despacho con datos de conductor, vehículo y flete |
-| `cambios` | Changelog público del sistema (descripcion en CLOB) |
-
-Todas las tablas transaccionales incluyen `usuario_id` para aislamiento multi-tenant.  
-Las tablas `campanas_diario` y `remisiones` usan `ON DELETE CASCADE` sobre `campana_id`.  
-Cada tabla tiene un trigger `BEFORE UPDATE` para actualizar el campo `updated_at`.
-
-### Objetos PL/SQL
-
-| Objeto | Tipo | Descripción |
-|--------|------|-------------|
-| `trg_descontar_stock_fertilizante` | Trigger `BEFORE INSERT` | Descuenta `stock_kg` en `fertilizantes` al registrar un uso. Lanza error si el stock es insuficiente. |
-| `trg_alerta_plaga_alta` | Trigger `AFTER INSERT` | Inserta automáticamente una alerta en `cambios` cuando se detecta una plaga con severidad `Alta`. |
-| `t_uso_fert` | Object Type | Tipo objeto con `fertilizante_id` y `cantidad_kg` para uso en colecciones. |
-| `t_lista_usos` | Nested Table | Colección de `t_uso_fert` usada como parámetro del procedimiento de lote. |
-| `sp_aplicar_fertilizantes` | Procedure | Recibe una colección `t_lista_usos`, itera cada ítem e inserta en `usos_fertilizante` (activando el trigger de stock por cada fila). |
-| `V_DASHBOARD` | View | Resumen por usuario: parcelas activas, trabajadores, ingresos/egresos del mes y campañas activas. |
-| `V_RESUMEN_FINANCIERO` | View | `UNION ALL` de ingresos y egresos agrupados por mes para reportes financieros. |
-| `V_STOCK_BAJO` | View | Fertilizantes cuyo `stock_kg` es menor o igual a `stock_minimo`. |
-
----
-
-## Helpers de Oracle (`config/db.js`)
-
-| Helper | Descripción |
-|--------|-------------|
-| `query(sql, binds, opts)` | Ejecuta una query con binds nombrados y devuelve rows |
-| `insertReturningId(sql, binds)` | Ejecuta un INSERT con `RETURNING id INTO :outId` y devuelve el id generado |
-| `toDate(str)` | Convierte string ISO (`'2025-11-10'`) a objeto `Date` para bindear contra columnas `DATE` |
-| `lowercaseRow(row)` | Convierte las claves de un objeto de MAYÚSCULAS (default Oracle) a minúsculas |
-| `lowercaseRows(rows)` | Aplica `lowercaseRow` a un array de resultados |
-
----
-
-## Servicio de IA (`ai.service.js`)
-
-| Modo | Descripción |
-|------|-------------|
-| `heuristic` | Sin API key externa. Recomendaciones basadas en reglas y `data/knowledge.json`. Consulta Wikipedia como fuente adicional. |
-| `openai` | Usa GPT-4o-mini. Envía el contexto real de la finca como system prompt. |
-| `anthropic` | Usa Claude. Misma estrategia de contexto que OpenAI. |
-
-En todos los modos el servicio consulta Oracle para incluir el estado actual de la finca (parcelas, trabajadores, finanzas, alertas) antes de generar la respuesta.
-
----
-
-## Middleware
-
-| Archivo | Función |
-|---------|---------|
-| `requireAuth.js` | Extrae y verifica el token Bearer. Adjunta `req.user = { id, rol }`. Devuelve 401 si falta o es inválido. |
-| `requireOwner.js` | Verifica `req.user.rol === 'owner'`. Devuelve 403 si no cumple. Requiere `requireAuth` antes. |
-| `asyncHandler.js` | Envuelve handlers async para propagar errores al `errorHandler` global. |
-| `errorHandler.js` | Responde con `{ error, message, details? }` y el status code apropiado (default 500). |
-| `notFound.js` | Responde 404 con la ruta solicitada para facilitar el debugging. |
